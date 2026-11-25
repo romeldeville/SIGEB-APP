@@ -32,6 +32,11 @@ class BaptemeRepository {
     return ActeBapteme.fromJson(resp.data as Map<String, dynamic>);
   }
 
+  Future<ActeBapteme> renvoyerPourCorrection(String id, String motifCorrection) async {
+    final resp = await _dio.post('/actes/$id/renvoyer', data: {'motifCorrection': motifCorrection});
+    return ActeBapteme.fromJson(resp.data as Map<String, dynamic>);
+  }
+
   Future<List<CarteEmise>> listerCartes(String acteId) async {
     final resp = await _dio.get('/actes/$acteId/cartes');
     return (resp.data as List).map((e) => CarteEmise.fromJson(e as Map<String, dynamic>)).toList();

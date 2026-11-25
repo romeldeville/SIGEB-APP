@@ -318,6 +318,111 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
     }
   }
 
+  Future<void> _dialogMuterUtilisateur(UtilisateurItem u) async {
+    String role = u.role;
+    String niveau = u.niveau;
+    String? provId = _provinces.isNotEmpty ? _provinces.first.id : null;
+    String? diocId = _dioceses.isNotEmpty ? _dioceses.first.id : null;
+    String? parId = _paroisses.isNotEmpty ? _paroisses.first.id : null;
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: Text('Muter ${u.nomComplet}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: role,
+                  decoration: const InputDecoration(labelText: 'Nouveau rôle'),
+                  items: const [
+                    DropdownMenuItem(value: 'ADMIN_NATIONAL', child: Text('Administrateur National')),
+                    DropdownMenuItem(value: 'RESPONSABLE_PROVINCE', child: Text('Responsable de Province')),
+                    DropdownMenuItem(value: 'CHANCELIER', child: Text('Chancelier')),
+                    DropdownMenuItem(value: 'CURE', child: Text('Curé')),
+                    DropdownMenuItem(value: 'SECRETAIRE', child: Text('Secrétaire')),
+                  ],
+                  onChanged: (v) => setS(() => role = v ?? role),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: niveau,
+                  decoration: const InputDecoration(labelText: 'Nouveau niveau ecclésial'),
+                  items: const [
+                    DropdownMenuItem(value: 'NATIONAL', child: Text('National')),
+                    DropdownMenuItem(value: 'PROVINCE', child: Text('Province')),
+                    DropdownMenuItem(value: 'DIOCESE', child: Text('Diocèse')),
+                    DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse')),
+                  ],
+                  onChanged: (v) => setS(() => niveau = v ?? niveau),
+                ),
+                if (niveau == 'PROVINCE' && _provinces.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: provId,
+                    decoration: const InputDecoration(labelText: 'Nouvelle province'),
+                    items: _provinces
+                        .map((p) => DropdownMenuItem(value: p.id, child: Text('${p.nomFr} (${p.code})')))
+                        .toList(),
+                    onChanged: (v) => setS(() => provId = v),
+                  ),
+                ],
+                if (niveau == 'DIOCESE' && _dioceses.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: diocId,
+                    decoration: const InputDecoration(labelText: 'Nouveau diocèse'),
+                    items: _dioceses
+                        .map((d) => DropdownMenuItem(value: d.id, child: Text('${d.nomFr} (${d.code})')))
+                        .toList(),
+                    onChanged: (v) => setS(() => diocId = v),
+                  ),
+                ],
+                if (niveau == 'PAROISSE' && _paroisses.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: parId,
+                    decoration: const InputDecoration(labelText: 'Nouvelle paroisse'),
+                    items: _paroisses
+                        .map((p) => DropdownMenuItem(value: p.id, child: Text('${p.nomFr} (${p.code})')))
+                        .toList(),
+                    onChanged: (v) => setS(() => parId = v),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Confirmer la mutation')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(referentielRepositoryProvider).muterUtilisateur(u.id, {
+        'nouveauRole': role,
+        'nouveauNiveau': niveau,
+        if (niveau == 'PROVINCE' && provId != null) 'nouvelleProvinceId': provId,
+        if (niveau == 'DIOCESE' && diocId != null) 'nouveauDioceseId': diocId,
+        if (niveau == 'PAROISSE' && parId != null) 'nouvelleParoisseId': parId,
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Mutation enregistrée pour ${u.nomComplet} (sessions précédentes révoquées).')),
+        );
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
+      }
+    }
+  }
+
   Future<void> _toggleStatutUtilisateur(UtilisateurItem u) async {
     final actif = u.statut == 'ACTIF';
     final nouveauStatut = actif ? 'SUSPENDU' : 'ACTIF';
@@ -438,7 +543,12 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                                           label: Text(u.statut, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                                           backgroundColor: (actif ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.15),
                                         ),
-                                        if (session?.isAdminNational == true || session?.isChancelier == true)
+                                        if (session?.isAdminNational == true || session?.isChancelier == true) ...[
+                                          IconButton(
+                                            tooltip: 'Muter vers une autre affectation',
+                                            icon: const Icon(Icons.swap_horiz_rounded, color: AppTheme.navy),
+                                            onPressed: () => _dialogMuterUtilisateur(u),
+                                          ),
                                           IconButton(
                                             tooltip: actif ? 'Suspendre ce compte' : 'Réactiver ce compte',
                                             icon: Icon(
@@ -447,6 +557,7 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                                             ),
                                             onPressed: () => _toggleStatutUtilisateur(u),
                                           ),
+                                        ],
                                       ],
                                     ),
                                   ),

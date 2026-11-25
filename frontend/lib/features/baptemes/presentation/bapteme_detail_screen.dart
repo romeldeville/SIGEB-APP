@@ -83,6 +83,41 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
     }
   }
 
+  Future<void> _renvoyerPourCorrection() async {
+    final motifCtrl = TextEditingController();
+    final motif = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Renvoyer l\'acte au secrétariat'),
+        content: TextField(
+          controller: motifCtrl,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'Motif de correction requis *'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.warning),
+            onPressed: () => Navigator.pop(ctx, motifCtrl.text.trim()),
+            child: const Text('Renvoyer'),
+          ),
+        ],
+      ),
+    );
+    if (motif == null || motif.isEmpty) return;
+    try {
+      await ref.read(baptemeRepositoryProvider).renvoyerPourCorrection(widget.acteId, motif);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Acte renvoyé au secrétariat pour correction.')),
+        );
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
+    }
+  }
+
   Future<void> _emettreCarte() async {
     String format = 'CARTE';
     String motif = _cartes.any((c) => c.formatDocument == 'CARTE') ? 'MISE_A_JOUR' : 'PREMIERE_EMISSION';
@@ -453,12 +488,18 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
-                        if (!_acte!.isScelle && session?.isCure == true)
+                        if (!_acte!.isScelle && session?.isCure == true) ...[
                           ElevatedButton.icon(
                             onPressed: _scellerAvecPin,
                             icon: const Icon(Icons.verified),
                             label: Text(strings.sealAct),
                           ),
+                          OutlinedButton.icon(
+                            onPressed: _renvoyerPourCorrection,
+                            icon: const Icon(Icons.assignment_return_outlined),
+                            label: const Text('Renvoyer pour correction'),
+                          ),
+                        ],
                         if (_acte!.isScelle && session?.isParoisse == true)
                           ElevatedButton.icon(
                             onPressed: _emettreCarte,

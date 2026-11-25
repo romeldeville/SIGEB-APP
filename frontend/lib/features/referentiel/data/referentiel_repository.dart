@@ -46,6 +46,11 @@ class ReferentielRepository {
   Future<void> changerStatutUtilisateur(String id, String statut) async {
     await _dio.patch('/utilisateurs/$id/statut', queryParameters: {'statut': statut});
   }
+
+  Future<UtilisateurItem> muterUtilisateur(String id, Map<String, dynamic> payload) async {
+    final resp = await _dio.post('/utilisateurs/$id/muter', data: payload);
+    return UtilisateurItem.fromJson(resp.data as Map<String, dynamic>);
+  }
 }
 
 final referentielRepositoryProvider = Provider<ReferentielRepository>((ref) {

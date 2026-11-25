@@ -139,6 +139,39 @@ class _MentionsScreenState extends ConsumerState<MentionsScreen> {
     }
   }
 
+  Future<void> _rejeterMention(MentionItem m) async {
+    final motifCtrl = TextEditingController();
+    final motif = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Rejeter la mention marginale'),
+        content: TextField(
+          controller: motifCtrl,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'Motif du rejet *'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            onPressed: () => Navigator.pop(ctx, motifCtrl.text.trim()),
+            child: const Text('Rejeter'),
+          ),
+        ],
+      ),
+    );
+    if (motif == null || motif.isEmpty) return;
+    try {
+      await ref.read(mentionRepositoryProvider).rejeter(m.id, motif);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mention marginale rejetée.')));
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
@@ -173,7 +206,17 @@ class _MentionsScreenState extends ConsumerState<MentionsScreen> {
                             subtitle: Text('Paroisse déclarante : ${m.paroisseDeclaranteNomFr} · Date : ${m.dateEvenement}'
                                 '${m.conjointNomComplet != null ? " · Conjoint : ${m.conjointNomComplet}" : ""}'),
                             trailing: isCure
-                                ? ElevatedButton(onPressed: () => _validerAvecPin(m), child: const Text('Inscrire'))
+                                ? Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      ElevatedButton(onPressed: () => _validerAvecPin(m), child: const Text('Inscrire')),
+                                      OutlinedButton(
+                                        style: OutlinedButton.styleFrom(foregroundColor: AppTheme.danger),
+                                        onPressed: () => _rejeterMention(m),
+                                        child: const Text('Rejeter'),
+                                      ),
+                                    ],
+                                  )
                                 : Chip(label: Text(m.statut)),
                           ),
                         );
