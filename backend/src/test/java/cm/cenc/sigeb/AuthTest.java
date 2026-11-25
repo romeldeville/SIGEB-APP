@@ -1,14 +1,14 @@
 package cm.cenc.sigeb;
 
-import cm.cenc.sigeb.auth.AuthService;
+import cm.cenc.sigeb.auth.service.AuthService;
 import cm.cenc.sigeb.auth.dto.*;
-import cm.cenc.sigeb.referentiel.Utilisateur;
-import cm.cenc.sigeb.referentiel.UtilisateurRepository;
-import cm.cenc.sigeb.shared.crypto.TotpService;
+import cm.cenc.sigeb.referentiel.entity.Utilisateur;
+import cm.cenc.sigeb.referentiel.repository.UtilisateurRepository;
+import cm.cenc.sigeb.shared.crypto.service.TotpService;
 import cm.cenc.sigeb.shared.exception.BusinessException;
-import cm.cenc.sigeb.shared.security.Role;
-import cm.cenc.sigeb.shared.security.TenantContext;
-import cm.cenc.sigeb.shared.security.UserPrincipal;
+import cm.cenc.sigeb.shared.security.model.Role;
+import cm.cenc.sigeb.shared.security.context.TenantContext;
+import cm.cenc.sigeb.shared.security.model.UserPrincipal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
