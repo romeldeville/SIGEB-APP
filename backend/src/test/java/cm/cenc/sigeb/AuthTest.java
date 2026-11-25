@@ -167,4 +167,45 @@ class AuthTest {
         updated.setTotpSecretChiffre(null);
         utilisateurRepository.save(updated);
     }
+
+    @Test
+    void miseAJourProfilPersonnelEstSauvegardee() {
+        Utilisateur admin = utilisateurRepository.findByIdentifiant("admin@sigeb.cm").orElseThrow();
+        String ancienNom = admin.getNomComplet();
+        String ancienTel = admin.getTelephone();
+        String ancienneLangue = admin.getLanguePreferee();
+
+        TenantContext.setCurrentUser(new UserPrincipal(
+                admin.getId(),
+                admin.getIdentifiant(),
+                admin.getMotDePasseHash(),
+                Role.ADMIN_NATIONAL,
+                NiveauEcclesial.NATIONAL,
+                null,
+                null,
+                null,
+                admin.getNomComplet(),
+                admin.getLanguePreferee(),
+                true,
+                false,
+                false
+        ));
+
+        UserProfileResponse profil = authService.updateMyProfile(
+                new UpdateProfileRequest("Mgr Jean-Paul Admin CENC", "+237 699 00 11 22", "EN"),
+                "127.0.0.1"
+        );
+
+        assertThat(profil.nomComplet()).isEqualTo("Mgr Jean-Paul Admin CENC");
+        assertThat(profil.telephone()).isEqualTo("+237 699 00 11 22");
+        assertThat(profil.languePreferee()).isEqualTo("EN");
+        assertThat(profil.role()).isEqualTo("ADMIN_NATIONAL");
+
+        UserProfileResponse relu = authService.getMyProfile();
+        assertThat(relu.nomComplet()).isEqualTo("Mgr Jean-Paul Admin CENC");
+        assertThat(relu.telephone()).isEqualTo("+237 699 00 11 22");
+
+        // Restauration propre
+        authService.updateMyProfile(new UpdateProfileRequest(ancienNom, ancienTel, ancienneLangue), "127.0.0.1");
+    }
 }

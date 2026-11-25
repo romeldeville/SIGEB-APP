@@ -38,8 +38,29 @@ class AuthSession {
     );
   }
 
+  AuthSession copyWith({
+    String? nomComplet,
+    bool? mdpAChanger,
+    bool? totpActive,
+  }) {
+    return AuthSession(
+      accessToken: accessToken,
+      refreshToken: refreshToken,
+      role: role,
+      niveau: niveau,
+      nomComplet: nomComplet ?? this.nomComplet,
+      provinceId: provinceId,
+      dioceseId: dioceseId,
+      paroisseId: paroisseId,
+      mdpAChanger: mdpAChanger ?? this.mdpAChanger,
+      totpActive: totpActive ?? this.totpActive,
+    );
+  }
+
   bool get isCure => role == 'CURE';
   bool get isChancelier => role == 'CHANCELIER';
   bool get isAdminNational => role == 'ADMIN_NATIONAL';
   bool get isParoisse => niveau == 'PAROISSE';
+  bool get canSignActs =>
+      role == 'CURE' || role == 'CHANCELIER' || role == 'RESPONSABLE_PROVINCE' || role == 'ADMIN_NATIONAL';
 }

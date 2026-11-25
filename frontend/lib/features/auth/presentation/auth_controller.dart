@@ -49,6 +49,18 @@ class AuthController extends StateNotifier<AuthState> {
     }
   }
 
+  void updateSessionInfo({String? nomComplet, bool? totpActive, bool? mdpAChanger}) {
+    final current = state.session;
+    if (current == null) return;
+    state = state.copyWith(
+      session: current.copyWith(
+        nomComplet: nomComplet,
+        totpActive: totpActive,
+        mdpAChanger: mdpAChanger,
+      ),
+    );
+  }
+
   Future<void> logout() async {
     await _storage.clear();
     state = const AuthState();

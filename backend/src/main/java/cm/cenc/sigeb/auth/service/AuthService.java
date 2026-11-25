@@ -252,6 +252,71 @@ public class AuthService {
         utilisateurRepository.save(user);
     }
 
+    @Transactional(readOnly = true)
+    public UserProfileResponse getMyProfile() {
+        UserPrincipal principal = TenantContext.requireCurrentUser();
+        Utilisateur user = utilisateurRepository.findById(principal.id())
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "UTILISATEUR_INTROUVABLE", "Utilisateur introuvable"));
+        return toProfileResponse(user);
+    }
+
+    @Transactional
+    public UserProfileResponse updateMyProfile(UpdateProfileRequest request, String clientIp) {
+        UserPrincipal principal = TenantContext.requireCurrentUser();
+        Utilisateur user = utilisateurRepository.findById(principal.id())
+                .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "UTILISATEUR_INTROUVABLE", "Utilisateur introuvable"));
+
+        String nouveauNom = request.nomComplet().trim();
+        String nouveauTel = request.telephone() != null && !request.telephone().isBlank()
+                ? request.telephone().trim()
+                : null;
+        String nouvelleLangue = request.languePreferee().trim().toUpperCase();
+
+        user.setNomComplet(nouveauNom);
+        user.setTelephone(nouveauTel);
+        user.setLanguePreferee(nouvelleLangue);
+        utilisateurRepository.save(user);
+
+        auditService.enregistrer(new AuditEvent(
+                user.getId(),
+                user.getRole(),
+                user.getDiocese() != null ? user.getDiocese().getId() : null,
+                user.getParoisse() != null ? user.getParoisse().getId() : null,
+                AuditAction.RECTIFICATION,
+                "utilisateur",
+                user.getId(),
+                null,
+                "Mise à jour du profil personnel",
+                null,
+                clientIp
+        ));
+
+        return toProfileResponse(user);
+    }
+
+    private UserProfileResponse toProfileResponse(Utilisateur user) {
+        boolean en = "EN".equalsIgnoreCase(user.getLanguePreferee());
+        return new UserProfileResponse(
+                user.getId(),
+                user.getIdentifiant(),
+                user.getNomComplet(),
+                user.getTelephone(),
+                user.getLanguePreferee(),
+                user.getRole().name(),
+                user.getNiveau().name(),
+                user.getProvince() != null ? user.getProvince().getId() : null,
+                user.getProvince() != null ? (en ? user.getProvince().getNomEn() : user.getProvince().getNomFr()) : null,
+                user.getDiocese() != null ? user.getDiocese().getId() : null,
+                user.getDiocese() != null ? (en ? user.getDiocese().getNomEn() : user.getDiocese().getNomFr()) : null,
+                user.getParoisse() != null ? user.getParoisse().getId() : null,
+                user.getParoisse() != null ? (en ? user.getParoisse().getNomEn() : user.getParoisse().getNomFr()) : null,
+                user.getStatut(),
+                user.isTotpActive(),
+                user.isMdpAChanger(),
+                user.getPinSignatureHash() != null
+        );
+    }
+
     private UserPrincipal toPrincipal(Utilisateur user) {
         return new UserPrincipal(
                 user.getId(),

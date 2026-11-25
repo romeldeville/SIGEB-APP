@@ -3,8 +3,6 @@ package cm.cenc.sigeb.auth.controller;
 import cm.cenc.sigeb.auth.service.AuthService;
 
 import cm.cenc.sigeb.auth.dto.*;
-import cm.cenc.sigeb.shared.security.context.TenantContext;
-import cm.cenc.sigeb.shared.security.model.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -69,9 +67,18 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    @Operation(summary = "Récupération du profil de l'utilisateur authentifié")
-    public ResponseEntity<UserPrincipal> me() {
-        return ResponseEntity.ok(TenantContext.requireCurrentUser());
+    @Operation(summary = "Récupération du profil complet de l'utilisateur authentifié")
+    public ResponseEntity<UserProfileResponse> me() {
+        return ResponseEntity.ok(authService.getMyProfile());
+    }
+
+    @PatchMapping("/me")
+    @Operation(summary = "Mise à jour des informations personnelles (nom, téléphone, langue) de l'utilisateur connecté")
+    public ResponseEntity<UserProfileResponse> updateMe(
+            @Valid @RequestBody UpdateProfileRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return ResponseEntity.ok(authService.updateMyProfile(request, extractClientIp(httpRequest)));
     }
 
     private String extractClientIp(HttpServletRequest request) {
