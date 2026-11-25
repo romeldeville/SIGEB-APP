@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: sigeb
+  datasource:
+    # L'application se connecte avec le rôle restreint (RLS appliquée)
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/sigeb}
+    username: ${DB_USER:sigeb_app}
+    password: ${DB_PASSWORD:sigeb_app_dev}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    # Les migrations s'exécutent avec le propriétaire du schéma
+    user: ${FLYWAY_USER:sigeb_owner}
+    password: ${FLYWAY_PASSWORD:sigeb_owner_dev}
+    locations: classpath:db/migration
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+server:
+  port: 8080
