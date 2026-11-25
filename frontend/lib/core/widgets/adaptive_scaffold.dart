@@ -69,6 +69,11 @@ class AdaptiveScaffold extends ConsumerWidget {
             child: Text(lang, style: const TextStyle(color: AppTheme.gold, fontWeight: FontWeight.bold)),
           ),
           IconButton(
+            tooltip: 'Profil & Sécurité',
+            icon: const Icon(Icons.manage_accounts_outlined),
+            onPressed: () => context.go('/profil'),
+          ),
+          IconButton(
             tooltip: strings.logout,
             icon: const Icon(Icons.logout),
             onPressed: () async {

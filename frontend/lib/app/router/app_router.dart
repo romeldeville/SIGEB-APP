@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/audit/presentation/audit_screen.dart';
 import '../../features/auth/presentation/auth_controller.dart';
 import '../../features/auth/presentation/login_screen.dart';
+import '../../features/auth/presentation/profil_securite_screen.dart';
 import '../../features/baptemes/presentation/bapteme_detail_screen.dart';
 import '../../features/baptemes/presentation/bapteme_form_screen.dart';
 import '../../features/baptemes/presentation/baptemes_list_screen.dart';
@@ -39,6 +40,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/mentions', builder: (_, _) => const MentionsScreen()),
       GoRoute(path: '/referentiel', builder: (_, _) => const ReferentielScreen()),
       GoRoute(path: '/audit', builder: (_, _) => const AuditScreen()),
+      GoRoute(path: '/profil', builder: (_, _) => const ProfilSecuriteScreen()),
     ],
   );
 });

@@ -6,6 +6,8 @@ import '../../../app/theme/app_theme.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
 import '../../auth/presentation/auth_controller.dart';
+import '../data/audit_repository.dart';
+import '../domain/audit_entry.dart';
 
 class AuditScreen extends ConsumerStatefulWidget {
   const AuditScreen({super.key});
@@ -15,10 +17,11 @@ class AuditScreen extends ConsumerStatefulWidget {
 }
 
 class _AuditScreenState extends ConsumerState<AuditScreen> {
-  List<dynamic> _logs = [];
+  List<AuditEntry> _logs = [];
   bool _loading = true;
   String? _error;
   String? _integriteMsg;
+  bool _integriteOk = true;
 
   @override
   void initState() {
@@ -28,9 +31,9 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
 
   Future<void> _load() async {
     try {
-      final resp = await ref.read(dioProvider).get('/audit', queryParameters: {'limite': 50});
+      final list = await ref.read(auditRepositoryProvider).consulter();
       setState(() {
-        _logs = resp.data as List;
+        _logs = list;
         _loading = false;
       });
     } catch (e) {
@@ -43,12 +46,12 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
 
   Future<void> _verifierIntegrite() async {
     try {
-      final resp = await ref.read(dioProvider).get('/audit/integrite');
-      final data = resp.data as Map<String, dynamic>;
+      final res = await ref.read(auditRepositoryProvider).verifierIntegrite();
       setState(() {
-        _integriteMsg = data['chaineValide'] == true
-            ? 'Chaîne SHA-256 intacte (${data['nombreEntreesVerifiees']} entrées vérifiées)'
-            : 'ALERTE : Rupture détectée à l\'ID ${data['premiereRuptureId']}';
+        _integriteOk = res.chaineValide;
+        _integriteMsg = res.chaineValide
+            ? 'Chaîne SHA-256 intacte (${res.nombreEntreesVerifiees} entrées vérifiées)'
+            : 'ALERTE : Rupture détectée à l\'ID ${res.premiereRuptureId}';
       });
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
@@ -77,7 +80,15 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
                   ),
                   if (_integriteMsg != null) ...[
                     const SizedBox(width: 12),
-                    Expanded(child: Text(_integriteMsg!, style: const TextStyle(fontWeight: FontWeight.bold, color: AppTheme.success))),
+                    Expanded(
+                      child: Text(
+                        _integriteMsg!,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: _integriteOk ? AppTheme.success : AppTheme.danger,
+                        ),
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -91,12 +102,12 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
                         padding: const EdgeInsets.all(12),
                         itemCount: _logs.length,
                         itemBuilder: (_, i) {
-                          final l = _logs[i] as Map<String, dynamic>;
+                          final l = _logs[i];
                           return Card(
                             child: ListTile(
                               dense: true,
-                              title: Text('${l['typeAction']} · ${l['roleUtilisateur']}'),
-                              subtitle: Text('${l['iunConcerne'] ?? "-"} · ${l['motif'] ?? ""} · ${l['horodatage']}'),
+                              title: Text('${l.typeAction} · ${l.roleUtilisateur}'),
+                              subtitle: Text('${l.iunConcerne ?? "-"} · ${l.motif ?? ""} · ${l.horodatage}'),
                             ),
                           );
                         },

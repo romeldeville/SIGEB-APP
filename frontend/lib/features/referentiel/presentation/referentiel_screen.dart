@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/l10n/app_strings.dart';
+import '../../../app/theme/app_theme.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
+import '../../auth/presentation/auth_controller.dart';
+import '../data/referentiel_repository.dart';
+import '../domain/referentiel_models.dart';
 
 class ReferentielScreen extends ConsumerStatefulWidget {
   const ReferentielScreen({super.key});
@@ -12,26 +16,46 @@ class ReferentielScreen extends ConsumerStatefulWidget {
   ConsumerState<ReferentielScreen> createState() => _ReferentielScreenState();
 }
 
-class _ReferentielScreenState extends ConsumerState<ReferentielScreen> {
-  List<dynamic> _provinces = [];
-  List<dynamic> _dioceses = [];
+class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabCtrl;
+  List<ProvinceItem> _provinces = [];
+  List<DioceseItem> _dioceses = [];
+  List<ParoisseItem> _paroisses = [];
+  List<UtilisateurItem> _utilisateurs = [];
   bool _loading = true;
   String? _error;
 
   @override
   void initState() {
     super.initState();
+    _tabCtrl = TabController(length: 3, vsync: this);
     _load();
   }
 
+  @override
+  void dispose() {
+    _tabCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final dio = ref.read(dioProvider);
-      final pResp = await dio.get('/referentiel/provinces');
-      final dResp = await dio.get('/referentiel/dioceses');
+      final repo = ref.read(referentielRepositoryProvider);
+      final results = await Future.wait([
+        repo.listerProvinces(),
+        repo.listerDioceses(),
+        repo.listerParoisses(),
+        repo.listerUtilisateurs(),
+      ]);
       setState(() {
-        _provinces = pResp.data as List;
-        _dioceses = dResp.data as List;
+        _provinces = results[0] as List<ProvinceItem>;
+        _dioceses = results[1] as List<DioceseItem>;
+        _paroisses = results[2] as List<ParoisseItem>;
+        _utilisateurs = results[3] as List<UtilisateurItem>;
         _loading = false;
       });
     } catch (e) {
@@ -42,9 +66,263 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> {
     }
   }
 
+  Future<void> _dialogNouveauDiocese() async {
+    if (_provinces.isEmpty) return;
+    String provId = _provinces.first.id;
+    String type = 'DIOCESE';
+    final code = TextEditingController();
+    final nomFr = TextEditingController();
+    final nomEn = TextEditingController();
+    final siege = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Nouveau Diocèse / Archidiocèse'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: provId,
+                  decoration: const InputDecoration(labelText: 'Province ecclésiastique'),
+                  items: _provinces.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.nomFr} (${p.code})'))).toList(),
+                  onChanged: (v) => setS(() => provId = v ?? provId),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: const [
+                    DropdownMenuItem(value: 'DIOCESE', child: Text('Diocèse')),
+                    DropdownMenuItem(value: 'ARCHIDIOCESE', child: Text('Archidiocèse')),
+                  ],
+                  onChanged: (v) => setS(() => type = v ?? type),
+                ),
+                const SizedBox(height: 10),
+                TextField(controller: code, decoration: const InputDecoration(labelText: 'Code IUN (ex. YDE, BAF)')),
+                const SizedBox(height: 10),
+                TextField(controller: nomFr, decoration: const InputDecoration(labelText: 'Nom français')),
+                const SizedBox(height: 10),
+                TextField(controller: nomEn, decoration: const InputDecoration(labelText: 'Nom anglais')),
+                const SizedBox(height: 10),
+                TextField(controller: siege, decoration: const InputDecoration(labelText: 'Ville siège')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Créer')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(referentielRepositoryProvider).creerDiocese({
+        'provinceId': provId,
+        'code': code.text.trim().toUpperCase(),
+        'typeDiocese': type,
+        'nomFr': nomFr.text.trim(),
+        'nomEn': nomEn.text.trim().isEmpty ? nomFr.text.trim() : nomEn.text.trim(),
+        'siege': siege.text.trim(),
+      });
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
+    }
+  }
+
+  Future<void> _dialogNouvelleParoisse() async {
+    if (_dioceses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Créez d\'abord un diocèse.')));
+      return;
+    }
+    String dioId = _dioceses.first.id;
+    String type = 'PAROISSE';
+    final code = TextEditingController();
+    final nomFr = TextEditingController();
+    final nomEn = TextEditingController();
+    final localite = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Nouvelle Paroisse / Cathédrale'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: dioId,
+                  decoration: const InputDecoration(labelText: 'Diocèse'),
+                  items: _dioceses.map((d) => DropdownMenuItem(value: d.id, child: Text('${d.nomFr} (${d.code})'))).toList(),
+                  onChanged: (v) => setS(() => dioId = v ?? dioId),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: type,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: const [
+                    DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse')),
+                    DropdownMenuItem(value: 'CATHEDRALE', child: Text('Cathédrale')),
+                    DropdownMenuItem(value: 'QUASI_PAROISSE', child: Text('Quasi-paroisse')),
+                    DropdownMenuItem(value: 'MISSION', child: Text('Mission')),
+                  ],
+                  onChanged: (v) => setS(() => type = v ?? type),
+                ),
+                const SizedBox(height: 10),
+                TextField(controller: code, decoration: const InputDecoration(labelText: 'Code (ex. P001)')),
+                const SizedBox(height: 10),
+                TextField(controller: nomFr, decoration: const InputDecoration(labelText: 'Nom français')),
+                const SizedBox(height: 10),
+                TextField(controller: nomEn, decoration: const InputDecoration(labelText: 'Nom anglais')),
+                const SizedBox(height: 10),
+                TextField(controller: localite, decoration: const InputDecoration(labelText: 'Localité / Quartier')),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Créer')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(referentielRepositoryProvider).creerParoisse({
+        'dioceseId': dioId,
+        'code': code.text.trim().toUpperCase(),
+        'typeParoisse': type,
+        'nomFr': nomFr.text.trim(),
+        'nomEn': nomEn.text.trim().isEmpty ? nomFr.text.trim() : nomEn.text.trim(),
+        'localite': localite.text.trim(),
+      });
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
+    }
+  }
+
+  Future<void> _dialogNouvelUtilisateur() async {
+    String role = 'SECRETAIRE';
+    String niveau = 'PAROISSE';
+    String? provId = _provinces.firstOrNull?.id;
+    String? dioId = _dioceses.firstOrNull?.id;
+    String? parId = _paroisses.firstOrNull?.id;
+    final identifiant = TextEditingController();
+    final mdp = TextEditingController();
+    final nom = TextEditingController();
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: const Text('Nouveau Compte Ecclésiastique'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: identifiant, decoration: const InputDecoration(labelText: 'Identifiant (email / tél.)')),
+                const SizedBox(height: 10),
+                TextField(controller: nom, decoration: const InputDecoration(labelText: 'Nom complet')),
+                const SizedBox(height: 10),
+                TextField(controller: mdp, obscureText: true, decoration: const InputDecoration(labelText: 'Mot de passe initial (10+ car.)')),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: role,
+                  decoration: const InputDecoration(labelText: 'Rôle (Autorité)'),
+                  items: const [
+                    DropdownMenuItem(value: 'SECRETAIRE', child: Text('Secrétaire (tous niveaux)')),
+                    DropdownMenuItem(value: 'CURE', child: Text('Curé / Recteur')),
+                    DropdownMenuItem(value: 'CHANCELIER', child: Text('Chancelier diocésain')),
+                    DropdownMenuItem(value: 'RESPONSABLE_PROVINCE', child: Text('Responsable Province')),
+                    DropdownMenuItem(value: 'ADMIN_NATIONAL', child: Text('Admin National CENC')),
+                  ],
+                  onChanged: (v) => setS(() {
+                    role = v ?? role;
+                    if (role == 'ADMIN_NATIONAL') niveau = 'NATIONAL';
+                    if (role == 'RESPONSABLE_PROVINCE') niveau = 'PROVINCE';
+                    if (role == 'CHANCELIER') niveau = 'DIOCESE';
+                    if (role == 'CURE') niveau = 'PAROISSE';
+                  }),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: niveau,
+                  decoration: const InputDecoration(labelText: 'Niveau ecclésial'),
+                  items: const [
+                    DropdownMenuItem(value: 'NATIONAL', child: Text('National (CENC)')),
+                    DropdownMenuItem(value: 'PROVINCE', child: Text('Province Ecclésiastique')),
+                    DropdownMenuItem(value: 'DIOCESE', child: Text('Diocèse / Chancellerie')),
+                    DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse / Cathédrale')),
+                  ],
+                  onChanged: role == 'SECRETAIRE' ? (v) => setS(() => niveau = v ?? niveau) : null,
+                ),
+                if (niveau == 'PROVINCE' && _provinces.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: provId,
+                    decoration: const InputDecoration(labelText: 'Province'),
+                    items: _provinces.map((p) => DropdownMenuItem(value: p.id, child: Text(p.nomFr))).toList(),
+                    onChanged: (v) => setS(() => provId = v),
+                  ),
+                ],
+                if (niveau == 'DIOCESE' && _dioceses.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: dioId,
+                    decoration: const InputDecoration(labelText: 'Diocèse'),
+                    items: _dioceses.map((d) => DropdownMenuItem(value: d.id, child: Text(d.nomFr))).toList(),
+                    onChanged: (v) => setS(() => dioId = v),
+                  ),
+                ],
+                if (niveau == 'PAROISSE' && _paroisses.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: parId,
+                    decoration: const InputDecoration(labelText: 'Paroisse / Cathédrale'),
+                    items: _paroisses.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.nomFr} (${p.code})'))).toList(),
+                    onChanged: (v) => setS(() => parId = v),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+            ElevatedButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Créer')),
+          ],
+        ),
+      ),
+    );
+    if (ok != true) return;
+    try {
+      await ref.read(referentielRepositoryProvider).creerUtilisateur({
+        'identifiant': identifiant.text.trim(),
+        'motDePasseInitial': mdp.text,
+        'nomComplet': nom.text.trim(),
+        'role': role,
+        'niveau': niveau,
+        if (niveau == 'PROVINCE') 'provinceId': provId,
+        if (niveau == 'DIOCESE') 'dioceseId': dioId,
+        if (niveau == 'PAROISSE') 'paroisseId': parId,
+        'languePreferee': 'FR',
+      });
+      await _load();
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
+    final session = ref.watch(authControllerProvider).session;
+
     return AdaptiveScaffold(
       currentRoute: '/referentiel',
       title: strings.navReferentiel,
@@ -52,28 +330,93 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!))
-              : ListView(
-                  padding: const EdgeInsets.all(16),
+              : Column(
                   children: [
-                    Text('Provinces Ecclésiastiques (${_provinces.length})',
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    ..._provinces.map((p) => Card(
-                          child: ListTile(
-                            leading: CircleAvatar(child: Text('${p['code']}')),
-                            title: Text('${p['nomFr']} / ${p['nomEn']}'),
+                    TabBar(
+                      controller: _tabCtrl,
+                      labelColor: AppTheme.navy,
+                      indicatorColor: AppTheme.gold,
+                      tabs: [
+                        Tab(text: 'Diocèses (${_dioceses.length})'),
+                        Tab(text: 'Paroisses (${_paroisses.length})'),
+                        Tab(text: 'Comptes (${_utilisateurs.length})'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabCtrl,
+                        children: [
+                          ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              if (session?.isAdminNational == true)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _dialogNouveauDiocese,
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Nouveau Diocèse'),
+                                  ),
+                                ),
+                              const SizedBox(height: 10),
+                              ..._dioceses.map((d) => Card(
+                                    child: ListTile(
+                                      leading: CircleAvatar(backgroundColor: AppTheme.navy, foregroundColor: Colors.white, child: Text(d.code)),
+                                      title: Text(d.nomFr),
+                                      subtitle: Text('${d.typeDiocese} · Province ${d.provinceCode} · Siège : ${d.siege}'),
+                                    ),
+                                  )),
+                            ],
                           ),
-                        )),
-                    const SizedBox(height: 16),
-                    Text('Diocèses & Archidiocèses (${_dioceses.length})',
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    ..._dioceses.map((d) => Card(
-                          child: ListTile(
-                            title: Text('${d['nomFr']} (${d['code']})'),
-                            subtitle: Text('${d['typeDiocese']} · Siège : ${d['siege']}'),
+                          ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              if (session?.isAdminNational == true || session?.isChancelier == true)
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: ElevatedButton.icon(
+                                    onPressed: _dialogNouvelleParoisse,
+                                    icon: const Icon(Icons.add),
+                                    label: const Text('Nouvelle Paroisse / Cathédrale'),
+                                  ),
+                                ),
+                              const SizedBox(height: 10),
+                              ..._paroisses.map((p) => Card(
+                                    child: ListTile(
+                                      leading: CircleAvatar(backgroundColor: AppTheme.gold, foregroundColor: AppTheme.navy, child: Text(p.code)),
+                                      title: Text(p.nomFr),
+                                      subtitle: Text('${p.typeParoisse} · Diocèse ${p.dioceseCode} · ${p.localite}'),
+                                    ),
+                                  )),
+                            ],
                           ),
-                        )),
+                          ListView(
+                            padding: const EdgeInsets.all(16),
+                            children: [
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: ElevatedButton.icon(
+                                  onPressed: _dialogNouvelUtilisateur,
+                                  icon: const Icon(Icons.person_add),
+                                  label: const Text('Nouveau Compte'),
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              ..._utilisateurs.map((u) => Card(
+                                    child: ListTile(
+                                      title: Text('${u.nomComplet} (${u.identifiant})'),
+                                      subtitle: Text('${u.role} · Niveau ${u.niveau} · 2FA : ${u.totpActive ? "Actif" : "Inactif"}'),
+                                      trailing: Chip(
+                                        label: Text(u.statut, style: const TextStyle(fontSize: 11)),
+                                        backgroundColor: (u.statut == 'ACTIF' ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.15),
+                                      ),
+                                    ),
+                                  )),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
     );
