@@ -44,7 +44,7 @@ CREATE TABLE paroisse (
   id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   diocese_id       UUID         NOT NULL REFERENCES diocese(id),
   code             VARCHAR(10)  NOT NULL,
-  type_paroisse    VARCHAR(20)  NOT NULL CHECK (type_paroisse IN ('PAROISSE','QUASI_PAROISSE','MISSION')),
+  type_paroisse    VARCHAR(20)  NOT NULL CHECK (type_paroisse IN ('PAROISSE','CATHEDRALE','QUASI_PAROISSE','MISSION')),
   nom_fr           VARCHAR(160) NOT NULL,
   nom_en           VARCHAR(160) NOT NULL,
   localite         VARCHAR(120) NOT NULL,
@@ -64,7 +64,10 @@ CREATE TABLE utilisateur (
   nom_complet          VARCHAR(160) NOT NULL,
   telephone            VARCHAR(30),
   role                 VARCHAR(25)  NOT NULL
-                       CHECK (role IN ('ADMIN_NATIONAL','CHANCELIER','CURE','SECRETAIRE')),
+                       CHECK (role IN ('ADMIN_NATIONAL','RESPONSABLE_PROVINCE','CHANCELIER','CURE','SECRETAIRE')),
+  niveau               VARCHAR(15)  NOT NULL DEFAULT 'PAROISSE'
+                       CHECK (niveau IN ('NATIONAL','PROVINCE','DIOCESE','PAROISSE')),
+  province_id          UUID REFERENCES province_ecclesiastique(id),
   diocese_id           UUID REFERENCES diocese(id),
   paroisse_id          UUID REFERENCES paroisse(id),
   langue_preferee      VARCHAR(2)   NOT NULL DEFAULT 'FR' CHECK (langue_preferee IN ('FR','EN')),
@@ -73,9 +76,17 @@ CREATE TABLE utilisateur (
   verrouille_jusqua    TIMESTAMPTZ,
   cree_le              TIMESTAMPTZ  NOT NULL DEFAULT now(),
   CONSTRAINT ck_utilisateur_perimetre CHECK (
-    (role = 'ADMIN_NATIONAL')
-    OR (role = 'CHANCELIER' AND diocese_id IS NOT NULL)
-    OR (role IN ('CURE','SECRETAIRE') AND diocese_id IS NOT NULL AND paroisse_id IS NOT NULL)
+    (niveau = 'NATIONAL' AND province_id IS NULL     AND diocese_id IS NULL     AND paroisse_id IS NULL)
+    OR (niveau = 'PROVINCE' AND province_id IS NOT NULL AND diocese_id IS NULL     AND paroisse_id IS NULL)
+    OR (niveau = 'DIOCESE'  AND province_id IS NOT NULL AND diocese_id IS NOT NULL AND paroisse_id IS NULL)
+    OR (niveau = 'PAROISSE' AND province_id IS NOT NULL AND diocese_id IS NOT NULL AND paroisse_id IS NOT NULL)
+  ),
+  CONSTRAINT ck_utilisateur_role_niveau CHECK (
+    (role = 'ADMIN_NATIONAL'       AND niveau = 'NATIONAL')
+    OR (role = 'RESPONSABLE_PROVINCE' AND niveau = 'PROVINCE')
+    OR (role = 'CHANCELIER'        AND niveau = 'DIOCESE')
+    OR (role = 'CURE'              AND niveau = 'PAROISSE')
+    OR (role = 'SECRETAIRE')
   )
 );
 
@@ -83,6 +94,9 @@ CREATE TABLE affectation_utilisateur (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   utilisateur_id UUID        NOT NULL REFERENCES utilisateur(id),
   role           VARCHAR(25) NOT NULL,
+  niveau         VARCHAR(15) NOT NULL DEFAULT 'PAROISSE'
+                 CHECK (niveau IN ('NATIONAL','PROVINCE','DIOCESE','PAROISSE')),
+  province_id    UUID REFERENCES province_ecclesiastique(id),
   diocese_id     UUID REFERENCES diocese(id),
   paroisse_id    UUID REFERENCES paroisse(id),
   date_debut     DATE        NOT NULL,
@@ -239,6 +253,7 @@ CREATE TABLE journal_audit (
   horodatage       TIMESTAMPTZ NOT NULL DEFAULT now(),
   utilisateur_id   UUID REFERENCES utilisateur(id),
   role_utilisateur VARCHAR(25) NOT NULL,
+  province_id      UUID,
   diocese_id       UUID,
   paroisse_id      UUID,
   type_action      VARCHAR(30) NOT NULL
@@ -302,7 +317,7 @@ CREATE INDEX ix_refresh_famille ON refresh_token (utilisateur_id, famille_id);
 CREATE TABLE requete_idempotente (
   utilisateur_id    UUID        NOT NULL REFERENCES utilisateur(id),
   cle               UUID        NOT NULL,
-  empreinte_requete CHAR(64)    NOT NULL,
+  empreinte_requete VARCHAR(64) NOT NULL,
   statut_http       SMALLINT,
   reponse_json      JSONB,
   cree_le           TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -315,12 +330,25 @@ CREATE INDEX ix_idempotente_cree ON requete_idempotente (cree_le);
 -- ---------------------------------------------------------------------
 CREATE FUNCTION app_role() RETURNS text LANGUAGE sql STABLE AS
   $$ SELECT NULLIF(current_setting('app.role', true), '') $$;
+CREATE FUNCTION app_niveau() RETURNS text LANGUAGE sql STABLE AS
+  $$ SELECT NULLIF(current_setting('app.niveau', true), '') $$;
+CREATE FUNCTION app_province() RETURNS uuid LANGUAGE sql STABLE AS
+  $$ SELECT NULLIF(current_setting('app.province_id', true), '')::uuid $$;
 CREATE FUNCTION app_paroisse() RETURNS uuid LANGUAGE sql STABLE AS
   $$ SELECT NULLIF(current_setting('app.paroisse_id', true), '')::uuid $$;
 CREATE FUNCTION app_diocese() RETURNS uuid LANGUAGE sql STABLE AS
   $$ SELECT NULLIF(current_setting('app.diocese_id', true), '')::uuid $$;
 
 -- Fonctions SECURITY DEFINER : lisent hors RLS pour résoudre l'appartenance
+CREATE FUNCTION paroisse_dans_province(p uuid) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM paroisse pa
+    JOIN diocese d ON d.id = pa.diocese_id
+    WHERE pa.id = p AND d.province_id = app_province()
+  )
+$$;
+
 CREATE FUNCTION paroisse_dans_diocese(p uuid) RETURNS boolean
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS
   $$ SELECT EXISTS (SELECT 1 FROM paroisse WHERE id = p AND diocese_id = app_diocese()) $$;
@@ -333,9 +361,10 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS
 CREATE FUNCTION perimetre_couvre(p uuid) RETURNS boolean
 LANGUAGE sql STABLE AS $$
   SELECT CASE
-    WHEN app_role() = 'ADMIN_NATIONAL' THEN TRUE
-    WHEN app_role() = 'CHANCELIER'     THEN paroisse_dans_diocese(p)
-    WHEN app_role() IN ('CURE','SECRETAIRE') THEN p = app_paroisse()
+    WHEN app_niveau() = 'NATIONAL' OR app_role() = 'ADMIN_NATIONAL' THEN TRUE
+    WHEN app_niveau() = 'PROVINCE' OR app_role() = 'RESPONSABLE_PROVINCE' THEN paroisse_dans_province(p)
+    WHEN app_niveau() = 'DIOCESE'  OR app_role() = 'CHANCELIER' THEN paroisse_dans_diocese(p)
+    WHEN app_niveau() = 'PAROISSE' OR app_role() IN ('CURE','SECRETAIRE') THEN p = app_paroisse()
     ELSE FALSE
   END
 $$;
@@ -363,8 +392,9 @@ CREATE POLICY cloisonnement ON carte_emise
 -- Audit : lecture limitée au périmètre, écriture libre (append-only)
 CREATE POLICY audit_lecture ON journal_audit FOR SELECT
   USING (
-    app_role() = 'ADMIN_NATIONAL'
-    OR (app_role() = 'CHANCELIER' AND diocese_id = app_diocese())
+    app_niveau() = 'NATIONAL' OR app_role() = 'ADMIN_NATIONAL'
+    OR ((app_niveau() = 'PROVINCE' OR app_role() = 'RESPONSABLE_PROVINCE') AND province_id = app_province())
+    OR ((app_niveau() = 'DIOCESE'  OR app_role() = 'CHANCELIER') AND diocese_id = app_diocese())
     OR (app_role() = 'CURE' AND paroisse_id = app_paroisse())
   );
 CREATE POLICY audit_ecriture ON journal_audit FOR INSERT WITH CHECK (TRUE);
