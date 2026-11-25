@@ -1,0 +1,24 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Backend
+backend/target/
+*.class
+*.log
+
+# Frontend
+frontend/build/
+frontend/.dart_tool/
+frontend/.flutter-plugins*
+frontend/.packages
+
+# IDE / OS
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
