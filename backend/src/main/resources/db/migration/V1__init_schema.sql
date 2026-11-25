@@ -292,7 +292,7 @@ CREATE TRIGGER trg_audit_chainer BEFORE INSERT ON journal_audit
 CREATE TABLE refresh_token (
   id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   utilisateur_id UUID        NOT NULL REFERENCES utilisateur(id),
-  token_hash     CHAR(64)    NOT NULL UNIQUE,
+  token_hash     VARCHAR(64) NOT NULL UNIQUE,
   famille_id     UUID        NOT NULL,
   expire_le      TIMESTAMPTZ NOT NULL,
   revoque_le     TIMESTAMPTZ

@@ -1,0 +1,15 @@
+package cm.cenc.sigeb.audit;
+
+public enum AuditAction {
+    CONNEXION,
+    CREATION_ACTE,
+    SCELLEMENT,
+    RECTIFICATION,
+    EMISSION_CARTE,
+    DUPLICATA,
+    REVOCATION_CARTE,
+    SCAN_QR,
+    RECHERCHE_NATIONALE,
+    MENTION_DECLAREE,
+    MENTION_VALIDEE
+}
