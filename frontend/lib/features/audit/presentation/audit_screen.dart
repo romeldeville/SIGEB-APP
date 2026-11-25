@@ -71,25 +71,24 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
           if (isAdmin)
             Padding(
               padding: const EdgeInsets.all(12),
-              child: Row(
+              child: Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   ElevatedButton.icon(
                     onPressed: _verifierIntegrite,
                     icon: const Icon(Icons.verified_user),
                     label: Text(strings.verifyIntegrity),
                   ),
-                  if (_integriteMsg != null) ...[
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        _integriteMsg!,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _integriteOk ? AppTheme.success : AppTheme.danger,
-                        ),
+                  if (_integriteMsg != null)
+                    Text(
+                      _integriteMsg!,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: _integriteOk ? AppTheme.success : AppTheme.danger,
                       ),
                     ),
-                  ],
                 ],
               ),
             ),

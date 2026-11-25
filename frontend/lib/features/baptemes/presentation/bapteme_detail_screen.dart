@@ -6,6 +6,7 @@ import '../../../app/l10n/app_strings.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
+import '../../../core/widgets/responsive_layout.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/bapteme_repository.dart';
 import '../domain/acte_bapteme.dart';
@@ -115,9 +116,12 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Text(_error!))
-              : ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
+              : SingleChildScrollView(
+                  child: ResponsiveContainer(
+                    maxWidth: 960,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16),
@@ -174,7 +178,9 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                             ),
                           )),
                     ],
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
     );
   }

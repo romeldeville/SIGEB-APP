@@ -5,6 +5,7 @@ import '../../../app/l10n/app_strings.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
+import '../../../core/widgets/responsive_layout.dart';
 import '../data/verification_repository.dart';
 
 class RechercheNationaleScreen extends ConsumerStatefulWidget {
@@ -53,9 +54,12 @@ class _RechercheNationaleScreenState extends ConsumerState<RechercheNationaleScr
     return AdaptiveScaffold(
       currentRoute: '/verification/qr',
       title: strings.nationalSearch,
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
+      body: SingleChildScrollView(
+        child: ResponsiveContainer(
+          maxWidth: 820,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           TextField(controller: _iunCtrl, decoration: const InputDecoration(labelText: 'IUN exact (ex. CM-YDE-P001-2026-00001)')),
           const SizedBox(height: 12),
           TextField(controller: _motifCtrl, decoration: const InputDecoration(labelText: 'Motif canonique obligatoire (ex. Préparation mariage)')),
@@ -73,7 +77,9 @@ class _RechercheNationaleScreenState extends ConsumerState<RechercheNationaleScr
                   ),
                 ),
               )),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../app/l10n/app_strings.dart';
 import '../../app/theme/app_theme.dart';
 import '../../features/auth/presentation/auth_controller.dart';
+import 'responsive_layout.dart';
 
 class _NavItem {
   final String route;
@@ -32,6 +33,11 @@ class AdaptiveScaffold extends ConsumerWidget {
     final strings = ref.watch(stringsProvider);
     final session = ref.watch(authControllerProvider).session;
     final lang = ref.watch(localeProvider);
+    final width = MediaQuery.sizeOf(context).width;
+
+    final isMobile = width < ScreenBreakpoints.mobile;
+    final isDesktop = width >= ScreenBreakpoints.tablet;
+    final isWideDesktop = width >= ScreenBreakpoints.desktop;
 
     final items = <_NavItem>[
       _NavItem('/dashboard', Icons.dashboard_outlined, strings.navDashboard),
@@ -48,17 +54,21 @@ class AdaptiveScaffold extends ConsumerWidget {
 
     final selectedIndex = items.indexWhere((i) => currentRoute.startsWith(i.route));
     final safeIndex = selectedIndex < 0 ? 0 : selectedIndex;
-    final isWide = MediaQuery.of(context).size.width >= 840;
 
     return Scaffold(
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+            Text(
+              title,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: isMobile ? 16 : 18, fontWeight: FontWeight.w700),
+            ),
             if (session != null)
               Text(
                 '${session.nomComplet} · ${session.role} (${session.niveau})',
+                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(fontSize: 11, color: Color(0xFFE2C15A)),
               ),
           ],
@@ -83,34 +93,88 @@ class AdaptiveScaffold extends ConsumerWidget {
           ),
         ],
       ),
-      body: isWide
-          ? Row(
-              children: [
-                NavigationRail(
-                  selectedIndex: safeIndex,
-                  labelType: NavigationRailLabelType.all,
-                  backgroundColor: Colors.white,
-                  indicatorColor: AppTheme.gold.withValues(alpha: 0.2),
-                  onDestinationSelected: (idx) => context.go(items[idx].route),
-                  destinations: items
-                      .map((i) => NavigationRailDestination(icon: Icon(i.icon), label: Text(i.label)))
-                      .toList(),
+      drawer: isMobile
+          ? Drawer(
+              child: SafeArea(
+                child: Column(
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      color: AppTheme.navy,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.church, color: AppTheme.gold, size: 34),
+                          const SizedBox(height: 8),
+                          const Text('SIGEB Cameroun',
+                              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                          if (session != null)
+                            Text('${session.role} · ${session.niveau}',
+                                style: const TextStyle(color: Color(0xFFE2C15A), fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    Expanded(
+                      child: ListView(
+                        children: [
+                          for (final item in items)
+                            ListTile(
+                              leading: Icon(item.icon,
+                                  color: currentRoute.startsWith(item.route) ? AppTheme.navy : null),
+                              title: Text(item.label),
+                              selected: currentRoute.startsWith(item.route),
+                              onTap: () {
+                                Navigator.pop(context);
+                                context.go(item.route);
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                const VerticalDivider(width: 1),
-                Expanded(child: body),
-              ],
+              ),
             )
-          : body,
-      bottomNavigationBar: isWide || items.length < 2
-          ? null
-          : NavigationBar(
-              selectedIndex: safeIndex,
+          : null,
+      body: SafeArea(
+        child: !isMobile
+            ? Row(
+                children: [
+                  NavigationRail(
+                    selectedIndex: safeIndex,
+                    extended: isWideDesktop,
+                    labelType: isWideDesktop ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+                    backgroundColor: Colors.white,
+                    indicatorColor: AppTheme.gold.withValues(alpha: 0.22),
+                    leading: isDesktop
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Icon(Icons.church, color: AppTheme.gold, size: isWideDesktop ? 36 : 28),
+                          )
+                        : null,
+                    onDestinationSelected: (idx) => context.go(items[idx].route),
+                    destinations: items
+                        .map((i) => NavigationRailDestination(icon: Icon(i.icon), label: Text(i.label)))
+                        .toList(),
+                  ),
+                  const VerticalDivider(width: 1),
+                  Expanded(child: body),
+                ],
+              )
+            : body,
+      ),
+      bottomNavigationBar: isMobile && items.length >= 2
+          ? NavigationBar(
+              selectedIndex: safeIndex.clamp(0, items.length > 4 ? 3 : items.length - 1),
+              labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
               onDestinationSelected: (idx) => context.go(items[idx].route),
               destinations: items
-                  .take(5)
+                  .take(4)
                   .map((i) => NavigationDestination(icon: Icon(i.icon), label: i.label))
                   .toList(),
-            ),
+            )
+          : null,
       floatingActionButton: floatingActionButton,
     );
   }

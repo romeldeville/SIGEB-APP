@@ -7,6 +7,7 @@ import '../../../app/l10n/app_strings.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
+import '../../../core/widgets/responsive_layout.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/verification_repository.dart';
 import '../domain/qr_verify_result.dart';
@@ -57,44 +58,50 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
     final strings = ref.watch(stringsProvider);
     final isAuthenticated = ref.watch(authControllerProvider).isAuthenticated;
 
-    final content = ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        if (_cameraActive)
-          SizedBox(
-            height: 280,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: MobileScanner(
-                onDetect: (capture) {
-                  final raw = capture.barcodes.firstOrNull?.rawValue;
-                  if (raw != null) _verify(raw);
-                },
-              ),
-            ),
-          )
-        else
-          ElevatedButton.icon(
-            onPressed: () => setState(() => _cameraActive = true),
-            icon: const Icon(Icons.qr_code_scanner),
-            label: const Text('Activer la caméra QR Code'),
-          ),
-        const SizedBox(height: 16),
-        Row(
+    final content = SingleChildScrollView(
+      child: ResponsiveContainer(
+        maxWidth: 760,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Expanded(
-              child: TextField(
-                controller: _manualCtrl,
-                decoration: const InputDecoration(labelText: 'Ou coller un QR SIGEB:v2:...'),
+            if (_cameraActive)
+              SizedBox(
+                height: 280,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: MobileScanner(
+                    onDetect: (capture) {
+                      final raw = capture.barcodes.firstOrNull?.rawValue;
+                      if (raw != null) _verify(raw);
+                    },
+                  ),
+                ),
+              )
+            else
+              ElevatedButton.icon(
+                onPressed: () => setState(() => _cameraActive = true),
+                icon: const Icon(Icons.qr_code_scanner),
+                label: const Text('Activer la caméra QR Code'),
               ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minWidth: 240, maxWidth: 540),
+                  child: TextField(
+                    controller: _manualCtrl,
+                    decoration: const InputDecoration(labelText: 'Ou coller un QR SIGEB:v2:...'),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: _scanning ? null : () => _verify(_manualCtrl.text),
+                  child: const Text('Vérifier'),
+                ),
+              ],
             ),
-            const SizedBox(width: 8),
-            ElevatedButton(
-              onPressed: _scanning ? null : () => _verify(_manualCtrl.text),
-              child: const Text('Vérifier'),
-            ),
-          ],
-        ),
         if (_scanning) const Padding(padding: EdgeInsets.all(20), child: Center(child: CircularProgressIndicator())),
         if (_error != null)
           Padding(
@@ -160,7 +167,9 @@ class _QrScannerScreenState extends ConsumerState<QrScannerScreen> {
             ),
           ),
         ],
-      ],
+          ],
+        ),
+      ),
     );
 
     if (!isAuthenticated) {

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
+import '../../../core/widgets/responsive_layout.dart';
 import '../data/auth_repository.dart';
 import 'auth_controller.dart';
 
@@ -62,9 +63,12 @@ class _ProfilSecuriteScreenState extends ConsumerState<ProfilSecuriteScreen> {
     return AdaptiveScaffold(
       currentRoute: '/profil',
       title: 'Profil & Sécurité',
-      body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
+      body: SingleChildScrollView(
+        child: ResponsiveContainer(
+          maxWidth: 760,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           Card(
             child: ListTile(
               leading: const CircleAvatar(backgroundColor: AppTheme.navy, child: Icon(Icons.person, color: Colors.white)),
@@ -111,7 +115,9 @@ class _ProfilSecuriteScreenState extends ConsumerState<ProfilSecuriteScreen> {
               ),
             ),
           ],
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -6,6 +6,7 @@ import '../../../app/l10n/app_strings.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
+import '../../../core/widgets/responsive_layout.dart';
 import '../../auth/presentation/auth_controller.dart';
 import '../data/statistique_repository.dart';
 
@@ -43,65 +44,71 @@ class DashboardScreen extends ConsumerWidget {
               ),
             ),
           ),
-          data: (stats) => ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Wrap(
-                spacing: 14,
-                runSpacing: 14,
+          data: (stats) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: ResponsiveContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _KpiCard(title: strings.sealedActs, value: '${stats.totalActesScelles}', color: AppTheme.navy, icon: Icons.verified),
-                  _KpiCard(title: strings.pendingActs, value: '${stats.totalActesEnAttente}', color: AppTheme.warning, icon: Icons.hourglass_top),
-                  _KpiCard(title: strings.drafts, value: '${stats.totalBrouillonsOuACorriger}', color: const Color(0xFF475569), icon: Icons.edit_note),
-                  _KpiCard(title: strings.originalCards, value: '${stats.totalCartesOriginales}', color: AppTheme.success, icon: Icons.badge_outlined),
-                  _KpiCard(title: strings.duplicates, value: '${stats.totalDuplicatas}', color: AppTheme.gold, icon: Icons.copy_all),
+                  ResponsiveGrid(
+                    minItemWidth: 165,
+                    maxColumns: 5,
+                    children: [
+                      _KpiCard(title: strings.sealedActs, value: '${stats.totalActesScelles}', color: AppTheme.navy, icon: Icons.verified),
+                      _KpiCard(title: strings.pendingActs, value: '${stats.totalActesEnAttente}', color: AppTheme.warning, icon: Icons.hourglass_top),
+                      _KpiCard(title: strings.drafts, value: '${stats.totalBrouillonsOuACorriger}', color: const Color(0xFF475569), icon: Icons.edit_note),
+                      _KpiCard(title: strings.originalCards, value: '${stats.totalCartesOriginales}', color: AppTheme.success, icon: Icons.badge_outlined),
+                      _KpiCard(title: strings.duplicates, value: '${stats.totalDuplicatas}', color: AppTheme.gold, icon: Icons.copy_all),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: [
+                      if (session?.isParoisse == true)
+                        ElevatedButton.icon(
+                          onPressed: () => context.go('/baptemes/nouveau'),
+                          icon: const Icon(Icons.add),
+                          label: Text(strings.newAct),
+                        ),
+                      OutlinedButton.icon(
+                        onPressed: () => context.go('/verification/qr'),
+                        icon: const Icon(Icons.qr_code_scanner),
+                        label: Text(strings.navScan),
+                      ),
+                      if (session != null && !(session.role == 'SECRETAIRE' && session.isParoisse))
+                        OutlinedButton.icon(
+                          onPressed: () => context.go('/verification/recherche'),
+                          icon: const Icon(Icons.search),
+                          label: Text(strings.nationalSearch),
+                        ),
+                    ],
+                  ),
+                  if (stats.mentionsParType.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(strings.navMentions,
+                                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.navy)),
+                            const SizedBox(height: 10),
+                            ...stats.mentionsParType.entries.map((e) => ListTile(
+                                  dense: true,
+                                  title: Text(e.key),
+                                  trailing: Chip(label: Text('${e.value}')),
+                                )),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ],
               ),
-              const SizedBox(height: 24),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: [
-                  if (session?.isParoisse == true)
-                    ElevatedButton.icon(
-                      onPressed: () => context.go('/baptemes/nouveau'),
-                      icon: const Icon(Icons.add),
-                      label: Text(strings.newAct),
-                    ),
-                  OutlinedButton.icon(
-                    onPressed: () => context.go('/verification/qr'),
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: Text(strings.navScan),
-                  ),
-                  if (session != null && !(session.role == 'SECRETAIRE' && session.isParoisse))
-                    OutlinedButton.icon(
-                      onPressed: () => context.go('/verification/recherche'),
-                      icon: const Icon(Icons.search),
-                      label: Text(strings.nationalSearch),
-                    ),
-                ],
-              ),
-              if (stats.mentionsParType.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(strings.navMentions, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.navy)),
-                        const SizedBox(height: 10),
-                        ...stats.mentionsParType.entries.map((e) => ListTile(
-                              dense: true,
-                              title: Text(e.key),
-                              trailing: Chip(label: Text('${e.value}')),
-                            )),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
+            ),
           ),
         ),
       ),
@@ -119,21 +126,19 @@ class _KpiCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 210,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 10),
-              Text(value, style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: color)),
-              const SizedBox(height: 4),
-              Text(title, style: const TextStyle(fontSize: 13, color: Color(0xFF475569))),
-            ],
-          ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: 8),
+            Text(value, style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800, color: color)),
+            const SizedBox(height: 4),
+            Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, color: Color(0xFF475569))),
+          ],
         ),
       ),
     );

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/l10n/app_strings.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
+import '../../../core/widgets/responsive_layout.dart';
 import '../data/bapteme_repository.dart';
 
 class BaptemeFormScreen extends ConsumerStatefulWidget {
@@ -76,69 +77,77 @@ class _BaptemeFormScreenState extends ConsumerState<BaptemeFormScreen> {
     return AdaptiveScaffold(
       currentRoute: '/baptemes',
       title: strings.newAct,
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(20),
-          children: [
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(value: 'NOUVEAU', label: Text('Nouveau baptême')),
-                ButtonSegment(value: 'REPRISE_ARCHIVE', label: Text('Reprise archive papier')),
-              ],
-              selected: {_origine},
-              onSelectionChanged: (s) => setState(() => _origine = s.first),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(controller: _nom, decoration: const InputDecoration(labelText: 'Nom *'), validator: _req),
-            const SizedBox(height: 12),
-            TextFormField(controller: _prenoms, decoration: const InputDecoration(labelText: 'Prénoms *'), validator: _req),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: _sexe,
-              decoration: const InputDecoration(labelText: 'Sexe'),
-              items: const [DropdownMenuItem(value: 'M', child: Text('Masculin')), DropdownMenuItem(value: 'F', child: Text('Féminin'))],
-              onChanged: (v) => setState(() => _sexe = v ?? 'M'),
-            ),
-            const SizedBox(height: 12),
-            TextFormField(controller: _dateNaiss, decoration: const InputDecoration(labelText: 'Date de naissance (AAAA-MM-JJ) *'), validator: _req),
-            const SizedBox(height: 12),
-            TextFormField(controller: _lieuNaiss, decoration: const InputDecoration(labelText: 'Lieu de naissance *'), validator: _req),
-            const SizedBox(height: 12),
-            TextFormField(controller: _nomPere, decoration: const InputDecoration(labelText: 'Nom du père')),
-            const SizedBox(height: 12),
-            TextFormField(controller: _nomMere, decoration: const InputDecoration(labelText: 'Nom de la mère')),
-            const SizedBox(height: 12),
-            TextFormField(controller: _nomParrain, decoration: const InputDecoration(labelText: 'Parrain (au moins 1 requis)')),
-            const SizedBox(height: 12),
-            TextFormField(controller: _nomMarraine, decoration: const InputDecoration(labelText: 'Marraine')),
-            const SizedBox(height: 12),
-            TextFormField(controller: _dateBap, decoration: const InputDecoration(labelText: 'Date de baptême (AAAA-MM-JJ) *'), validator: _req),
-            const SizedBox(height: 12),
-            TextFormField(controller: _lieuBap, decoration: const InputDecoration(labelText: 'Lieu de célébration *'), validator: _req),
-            const SizedBox(height: 12),
-            TextFormField(controller: _ministre, decoration: const InputDecoration(labelText: 'Ministre célébrant *'), validator: _req),
-            const SizedBox(height: 12),
-            Row(
+      body: SingleChildScrollView(
+        child: ResponsiveContainer(
+          maxWidth: 920,
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(child: TextFormField(controller: _tome, decoration: const InputDecoration(labelText: 'Tome *'), validator: _req)),
-                const SizedBox(width: 8),
-                Expanded(child: TextFormField(controller: _page, decoration: const InputDecoration(labelText: 'Page *'), validator: _req)),
-                const SizedBox(width: 8),
-                Expanded(child: TextFormField(controller: _numero, decoration: const InputDecoration(labelText: 'N° *'), validator: _req)),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'NOUVEAU', label: Text('Nouveau')),
+                    ButtonSegment(value: 'REPRISE_ARCHIVE', label: Text('Reprise archive')),
+                  ],
+                  selected: {_origine},
+                  onSelectionChanged: (s) => setState(() => _origine = s.first),
+                ),
+                const SizedBox(height: 16),
+                ResponsiveGrid(
+                  minItemWidth: 280,
+                  maxColumns: 2,
+                  children: [
+                    TextFormField(controller: _nom, decoration: const InputDecoration(labelText: 'Nom *'), validator: _req),
+                    TextFormField(controller: _prenoms, decoration: const InputDecoration(labelText: 'Prénoms *'), validator: _req),
+                    DropdownButtonFormField<String>(
+                      initialValue: _sexe,
+                      decoration: const InputDecoration(labelText: 'Sexe'),
+                      items: const [
+                        DropdownMenuItem(value: 'M', child: Text('Masculin')),
+                        DropdownMenuItem(value: 'F', child: Text('Féminin')),
+                      ],
+                      onChanged: (v) => setState(() => _sexe = v ?? 'M'),
+                    ),
+                    TextFormField(controller: _dateNaiss, decoration: const InputDecoration(labelText: 'Date de naissance (AAAA-MM-JJ) *'), validator: _req),
+                    TextFormField(controller: _lieuNaiss, decoration: const InputDecoration(labelText: 'Lieu de naissance *'), validator: _req),
+                    TextFormField(controller: _nomPere, decoration: const InputDecoration(labelText: 'Nom du père')),
+                    TextFormField(controller: _nomMere, decoration: const InputDecoration(labelText: 'Nom de la mère')),
+                    TextFormField(controller: _nomParrain, decoration: const InputDecoration(labelText: 'Parrain (au moins 1 requis)')),
+                    TextFormField(controller: _nomMarraine, decoration: const InputDecoration(labelText: 'Marraine')),
+                    TextFormField(controller: _dateBap, decoration: const InputDecoration(labelText: 'Date de baptême (AAAA-MM-JJ) *'), validator: _req),
+                    TextFormField(controller: _lieuBap, decoration: const InputDecoration(labelText: 'Lieu de célébration *'), validator: _req),
+                    TextFormField(controller: _ministre, decoration: const InputDecoration(labelText: 'Ministre célébrant *'), validator: _req),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ResponsiveGrid(
+                  minItemWidth: 160,
+                  maxColumns: 3,
+                  children: [
+                    TextFormField(controller: _tome, decoration: const InputDecoration(labelText: 'Registre Tome *'), validator: _req),
+                    TextFormField(controller: _page, decoration: const InputDecoration(labelText: 'Registre Page *'), validator: _req),
+                    TextFormField(controller: _numero, decoration: const InputDecoration(labelText: 'Registre N° *'), validator: _req),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: const Text('Soumettre directement au Curé pour scellement'),
+                  value: _soumettre,
+                  onChanged: (v) => setState(() => _soumettre = v),
+                ),
+                const SizedBox(height: 14),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: ElevatedButton(
+                    onPressed: _saving ? null : _save,
+                    child: _saving ? const CircularProgressIndicator(color: Colors.white) : const Text('Enregistrer l\'acte'),
+                  ),
+                ),
               ],
             ),
-            SwitchListTile(
-              title: const Text('Soumettre directement au Curé pour scellement'),
-              value: _soumettre,
-              onChanged: (v) => setState(() => _soumettre = v),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _saving ? null : _save,
-              child: _saving ? const CircularProgressIndicator(color: Colors.white) : const Text('Enregistrer l\'acte'),
-            ),
-          ],
+          ),
         ),
       ),
     );
