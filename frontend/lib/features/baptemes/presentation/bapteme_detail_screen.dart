@@ -122,6 +122,81 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                    // Aperçu Prestige de la Carte de Baptême numérique (le "pourboire" visuel !)
+                    if (_acte!.isScelle) ...[
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.navyGradient,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: AppTheme.gold, width: 1.5),
+                          boxShadow: AppTheme.softShadow,
+                        ),
+                        padding: const EdgeInsets.all(22),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Row(
+                                  children: [
+                                    Icon(Icons.church_rounded, color: AppTheme.goldLight, size: 22),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'ÉGLISE CATHOLIQUE DU CAMEROUN',
+                                      style: TextStyle(
+                                        color: AppTheme.goldLight,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 1.1,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.success.withValues(alpha: 0.25),
+                                    borderRadius: BorderRadius.circular(999),
+                                    border: Border.all(color: const Color(0xFF4ADE80)),
+                                  ),
+                                  child: const Text('SCELLÉ · OFFICIEL',
+                                      style: TextStyle(color: Color(0xFF86EFAC), fontSize: 10, fontWeight: FontWeight.w800)),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '${_acte!.nom.toUpperCase()} ${_acte!.prenoms}',
+                              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _acte!.iun ?? '',
+                              style: const TextStyle(
+                                color: AppTheme.goldLight,
+                                fontFamily: 'monospace',
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                            const Divider(color: Color(0x33FFFFFF), height: 24),
+                            Wrap(
+                              spacing: 24,
+                              runSpacing: 10,
+                              children: [
+                                _CardField(label: 'PAROISSE', value: _acte!.paroisseNomFr),
+                                _CardField(label: 'BAPTISÉ(E) LE', value: _acte!.dateBapteme),
+                                _CardField(label: 'REGISTRE PAPIER', value: 'T${_acte!.registreTome} / P${_acte!.registrePage} / N°${_acte!.registreNumero}'),
+                                _CardField(label: 'VERSION', value: 'v${_acte!.version}'),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16),
@@ -182,6 +257,24 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                     ),
                   ),
                 ),
+    );
+  }
+}
+
+class _CardField extends StatelessWidget {
+  final String label;
+  final String value;
+  const _CardField({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 10, fontWeight: FontWeight.w700)),
+        const SizedBox(height: 2),
+        Text(value, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
+      ],
     );
   }
 }
