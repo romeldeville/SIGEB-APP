@@ -3,6 +3,7 @@ package cm.cenc.sigeb.bapteme.controller;
 import cm.cenc.sigeb.bapteme.dto.*;
 import cm.cenc.sigeb.bapteme.enums.StatutActe;
 import cm.cenc.sigeb.bapteme.service.ActeBaptemeService;
+import cm.cenc.sigeb.shared.security.context.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,7 +35,12 @@ public class ActeBaptemeController {
             @RequestParam String prenoms,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateNaissance
     ) {
-        return ResponseEntity.ok(acteService.verifierDoublons(nom, prenoms, dateNaissance));
+        TenantContext.setNationalOverride(true);
+        try {
+            return ResponseEntity.ok(acteService.verifierDoublons(nom, prenoms, dateNaissance));
+        } finally {
+            TenantContext.setNationalOverride(false);
+        }
     }
 
     @GetMapping

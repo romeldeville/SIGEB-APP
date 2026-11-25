@@ -60,6 +60,36 @@ class BaptemeRepository {
     );
     return Uint8List.fromList(resp.data!);
   }
+
+  Future<CarteEmise> revoquerCarte(String carteId, String motif) async {
+    final resp = await _dio.post(
+      '/cartes/$carteId/revoquer',
+      queryParameters: {'motif': motif},
+    );
+    return CarteEmise.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  Future<List<AvenantRectification>> listerAvenants(String acteId) async {
+    final resp = await _dio.get('/actes/$acteId/avenants');
+    return (resp.data as List)
+        .map((e) => AvenantRectification.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<AvenantRectification> creerAvenant(String acteId, Map<String, dynamic> payload) async {
+    final resp = await _dio.post('/actes/$acteId/avenants', data: payload);
+    return AvenantRectification.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  Future<AvenantRectification> approuverAvenant(String avenantId, String pin) async {
+    final resp = await _dio.post('/avenants/$avenantId/approuver', data: {'pinSignature': pin});
+    return AvenantRectification.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  Future<AvenantRectification> rejeterAvenant(String avenantId) async {
+    final resp = await _dio.post('/avenants/$avenantId/rejeter');
+    return AvenantRectification.fromJson(resp.data as Map<String, dynamic>);
+  }
 }
 
 final baptemeRepositoryProvider = Provider<BaptemeRepository>((ref) {

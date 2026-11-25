@@ -10,11 +10,20 @@ import java.util.UUID;
 public final class TenantContext {
 
     private static final ThreadLocal<UserPrincipal> CURRENT_USER = new ThreadLocal<>();
+    private static final ThreadLocal<Boolean> NATIONAL_OVERRIDE = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
     private TenantContext() {}
 
     public static void setCurrentUser(UserPrincipal user) {
         CURRENT_USER.set(user);
+    }
+
+    public static boolean isNationalOverride() {
+        return Boolean.TRUE.equals(NATIONAL_OVERRIDE.get());
+    }
+
+    public static void setNationalOverride(boolean enabled) {
+        NATIONAL_OVERRIDE.set(enabled);
     }
 
     public static Optional<UserPrincipal> getCurrentUser() {
@@ -47,5 +56,6 @@ public final class TenantContext {
 
     public static void clear() {
         CURRENT_USER.remove();
+        NATIONAL_OVERRIDE.remove();
     }
 }

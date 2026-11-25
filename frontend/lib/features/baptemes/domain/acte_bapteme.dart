@@ -112,4 +112,47 @@ class CarteEmise {
         statut: j['statut'] as String,
         qrPayload: j['qrPayload'] as String,
       );
+
+  bool get isActive => statut == 'ACTIVE';
+}
+
+class AvenantRectification {
+  final String id;
+  final String acteBaptemeId;
+  final int versionCible;
+  final String gravite;
+  final Map<String, dynamic> nouvellesValeurs;
+  final String motif;
+  final String? referenceJustificatif;
+  final String statut;
+  final String? demandeLe;
+  final String? valideLe;
+
+  const AvenantRectification({
+    required this.id,
+    required this.acteBaptemeId,
+    required this.versionCible,
+    required this.gravite,
+    required this.nouvellesValeurs,
+    required this.motif,
+    this.referenceJustificatif,
+    required this.statut,
+    this.demandeLe,
+    this.valideLe,
+  });
+
+  factory AvenantRectification.fromJson(Map<String, dynamic> j) => AvenantRectification(
+        id: j['id'] as String,
+        acteBaptemeId: j['acteBaptemeId'] as String,
+        versionCible: (j['versionCible'] as num).toInt(),
+        gravite: j['gravite'] as String,
+        nouvellesValeurs: Map<String, dynamic>.from(j['nouvellesValeurs'] as Map? ?? {}),
+        motif: j['motif'] as String,
+        referenceJustificatif: j['referenceJustificatif'] as String?,
+        statut: j['statut'] as String,
+        demandeLe: j['demandeLe'] as String?,
+        valideLe: j['valideLe'] as String?,
+      );
+
+  bool get isEnAttente => statut == 'EN_ATTENTE_CHANCELIER';
 }

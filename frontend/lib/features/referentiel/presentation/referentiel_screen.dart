@@ -318,6 +318,28 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
     }
   }
 
+  Future<void> _toggleStatutUtilisateur(UtilisateurItem u) async {
+    final actif = u.statut == 'ACTIF';
+    final nouveauStatut = actif ? 'SUSPENDU' : 'ACTIF';
+    try {
+      await ref.read(referentielRepositoryProvider).changerStatutUtilisateur(u.id, nouveauStatut);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              actif ? 'Compte ${u.identifiant} suspendu.' : 'Compte ${u.identifiant} réactivé.',
+            ),
+          ),
+        );
+      }
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
@@ -402,16 +424,34 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                                 ),
                               ),
                               const SizedBox(height: 10),
-                              ..._utilisateurs.map((u) => Card(
-                                    child: ListTile(
-                                      title: Text('${u.nomComplet} (${u.identifiant})'),
-                                      subtitle: Text('${u.role} · Niveau ${u.niveau} · 2FA : ${u.totpActive ? "Actif" : "Inactif"}'),
-                                      trailing: Chip(
-                                        label: Text(u.statut, style: const TextStyle(fontSize: 11)),
-                                        backgroundColor: (u.statut == 'ACTIF' ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.15),
-                                      ),
+                              ..._utilisateurs.map((u) {
+                                final actif = u.statut == 'ACTIF';
+                                return Card(
+                                  child: ListTile(
+                                    title: Text('${u.nomComplet} (${u.identifiant})'),
+                                    subtitle: Text('${u.role} · Niveau ${u.niveau} · 2FA : ${u.totpActive ? "Actif" : "Inactif"}'),
+                                    trailing: Wrap(
+                                      spacing: 8,
+                                      crossAxisAlignment: WrapCrossAlignment.center,
+                                      children: [
+                                        Chip(
+                                          label: Text(u.statut, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                                          backgroundColor: (actif ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.15),
+                                        ),
+                                        if (session?.isAdminNational == true || session?.isChancelier == true)
+                                          IconButton(
+                                            tooltip: actif ? 'Suspendre ce compte' : 'Réactiver ce compte',
+                                            icon: Icon(
+                                              actif ? Icons.block_rounded : Icons.check_circle_outline_rounded,
+                                              color: actif ? AppTheme.danger : AppTheme.success,
+                                            ),
+                                            onPressed: () => _toggleStatutUtilisateur(u),
+                                          ),
+                                      ],
                                     ),
-                                  )),
+                                  ),
+                                );
+                              }),
                             ],
                           ),
                         ],

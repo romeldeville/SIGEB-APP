@@ -5,6 +5,7 @@ import cm.cenc.sigeb.mention.dto.MentionCreateRequest;
 import cm.cenc.sigeb.mention.dto.MentionRejetRequest;
 import cm.cenc.sigeb.mention.dto.MentionResponse;
 import cm.cenc.sigeb.mention.service.MentionMarginaleService;
+import cm.cenc.sigeb.shared.security.context.TenantContext;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -39,8 +40,13 @@ public class MentionMarginaleController {
             @Valid @RequestBody MentionCreateRequest req,
             HttpServletRequest httpRequest
     ) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(mentionService.declarerMention(req, extractClientIp(httpRequest)));
+        TenantContext.setNationalOverride(true);
+        try {
+            return ResponseEntity.status(HttpStatus.CREATED)
+                    .body(mentionService.declarerMention(req, extractClientIp(httpRequest)));
+        } finally {
+            TenantContext.setNationalOverride(false);
+        }
     }
 
     @PostMapping("/{id}/valider")

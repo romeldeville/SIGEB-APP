@@ -1,5 +1,6 @@
 package cm.cenc.sigeb.verification.controller;
 
+import cm.cenc.sigeb.shared.security.context.TenantContext;
 import cm.cenc.sigeb.verification.dto.QrVerifyRequest;
 import cm.cenc.sigeb.verification.dto.QrVerifyResponse;
 import cm.cenc.sigeb.verification.dto.RechercheNationaleItemResponse;
@@ -31,7 +32,12 @@ public class VerificationController {
             @Valid @RequestBody QrVerifyRequest req,
             HttpServletRequest httpRequest
     ) {
-        return ResponseEntity.ok(verificationService.verifierQr(req, extractClientIp(httpRequest)));
+        TenantContext.setNationalOverride(true);
+        try {
+            return ResponseEntity.ok(verificationService.verifierQr(req, extractClientIp(httpRequest)));
+        } finally {
+            TenantContext.setNationalOverride(false);
+        }
     }
 
     @PostMapping("/verification/recherche-nationale")
@@ -40,7 +46,12 @@ public class VerificationController {
             @Valid @RequestBody RechercheNationaleRequest req,
             HttpServletRequest httpRequest
     ) {
-        return ResponseEntity.ok(verificationService.rechercheNationale(req, extractClientIp(httpRequest)));
+        TenantContext.setNationalOverride(true);
+        try {
+            return ResponseEntity.ok(verificationService.rechercheNationale(req, extractClientIp(httpRequest)));
+        } finally {
+            TenantContext.setNationalOverride(false);
+        }
     }
 
     private String extractClientIp(HttpServletRequest request) {
