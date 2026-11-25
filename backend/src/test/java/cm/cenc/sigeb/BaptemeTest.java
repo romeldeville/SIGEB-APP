@@ -16,6 +16,7 @@ import cm.cenc.sigeb.referentiel.service.ReferentielService;
 import cm.cenc.sigeb.referentiel.service.UtilisateurService;
 import cm.cenc.sigeb.shared.exception.BusinessException;
 import cm.cenc.sigeb.shared.security.context.TenantContext;
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import cm.cenc.sigeb.shared.security.model.UserPrincipal;
 import org.junit.jupiter.api.AfterEach;
@@ -67,7 +68,7 @@ class BaptemeTest {
     void cycleCompletActeScellementIunEtAvenants() {
         // 1. Admin National crée le diocèse YDE, la paroisse P001 et les acteurs
         Utilisateur admin = utilisateurRepository.findByIdentifiant("admin@sigeb.cm").orElseThrow();
-        seConnecterComme(admin.getId(), admin.getIdentifiant(), Role.ADMIN_NATIONAL, null, null);
+        seConnecterComme(admin.getId(), admin.getIdentifiant(), Role.ADMIN_NATIONAL, NiveauEcclesial.NATIONAL, null, null, null);
 
         ProvinceResponse provYde = referentielService.listerProvinces().stream()
                 .filter(p -> "YDE".equals(p.code())).findFirst().orElseThrow();
@@ -76,27 +77,43 @@ class BaptemeTest {
                 provYde.id(), "YDE", "ARCHIDIOCESE", "Archidiocèse de Yaoundé", "Archdiocese of Yaounde", "Yaoundé"));
 
         ParoisseResponse par = referentielService.creerParoisse(new ParoisseCreateRequest(
-                dio.id(), "P001", "PAROISSE", "Paroisse Saint-Joseph", "Saint Joseph Parish", "Mvog-Ada", null));
+                dio.id(), "P001", "CATHEDRALE", "Cathédrale Notre-Dame des Victoires", "Our Lady of Victories Cathedral", "Yaoundé Centre", null));
+
+        // Vérification : on peut créer un SECRETAIRE à chaque niveau (NATIONAL, PROVINCE, DIOCESE, PAROISSE)
+        UtilisateurResponse secNat = utilisateurService.creerUtilisateur(new UtilisateurCreateRequest(
+                "sec.cenc@sigeb.cm", "SecretaireCenc2026!", "Secrétaire National CENC", null,
+                Role.SECRETAIRE, NiveauEcclesial.NATIONAL, null, null, null, "FR"));
+        assertThat(secNat.niveau()).isEqualTo(NiveauEcclesial.NATIONAL);
+
+        UtilisateurResponse secProv = utilisateurService.creerUtilisateur(new UtilisateurCreateRequest(
+                "sec.prov.yde@sigeb.cm", "SecretaireProv2026!", "Secrétaire Province Yaoundé", null,
+                Role.SECRETAIRE, NiveauEcclesial.PROVINCE, provYde.id(), null, null, "FR"));
+        assertThat(secProv.provinceId()).isEqualTo(provYde.id());
 
         UtilisateurResponse chancelier = utilisateurService.creerUtilisateur(new UtilisateurCreateRequest(
                 "chancelier.yde@sigeb.cm", "Chancelier2026!", "Abbé Chancelier", null,
-                Role.CHANCELIER, dio.id(), null, "FR"));
+                Role.CHANCELIER, NiveauEcclesial.DIOCESE, provYde.id(), dio.id(), null, "FR"));
+        UtilisateurResponse secDio = utilisateurService.creerUtilisateur(new UtilisateurCreateRequest(
+                "sec.dio.yde@sigeb.cm", "SecretaireDio2026!", "Secrétaire Chancellerie", null,
+                Role.SECRETAIRE, NiveauEcclesial.DIOCESE, provYde.id(), dio.id(), null, "FR"));
+        assertThat(secDio.dioceseId()).isEqualTo(dio.id());
+
         UtilisateurResponse cure = utilisateurService.creerUtilisateur(new UtilisateurCreateRequest(
                 "cure.p001@sigeb.cm", "CureParoisse2026!", "Abbé Curé", null,
-                Role.CURE, dio.id(), par.id(), "FR"));
+                Role.CURE, NiveauEcclesial.PAROISSE, provYde.id(), dio.id(), par.id(), "FR"));
         UtilisateurResponse secretaire = utilisateurService.creerUtilisateur(new UtilisateurCreateRequest(
                 "sec.p001@sigeb.cm", "Secretaire2026!", "Marie Secrétaire", null,
-                Role.SECRETAIRE, dio.id(), par.id(), "FR"));
+                Role.SECRETAIRE, NiveauEcclesial.PAROISSE, provYde.id(), dio.id(), par.id(), "FR"));
 
         // Configuration des PIN de signature du Curé et du Chancelier
-        seConnecterComme(cure.id(), cure.identifiant(), Role.CURE, dio.id(), par.id());
+        seConnecterComme(cure.id(), cure.identifiant(), Role.CURE, NiveauEcclesial.PAROISSE, provYde.id(), dio.id(), par.id());
         authService.changePin(new ChangePinRequest("CureParoisse2026!", "1234"));
 
-        seConnecterComme(chancelier.id(), chancelier.identifiant(), Role.CHANCELIER, dio.id(), null);
+        seConnecterComme(chancelier.id(), chancelier.identifiant(), Role.CHANCELIER, NiveauEcclesial.DIOCESE, provYde.id(), dio.id(), null);
         authService.changePin(new ChangePinRequest("Chancelier2026!", "5678"));
 
         // 2. Le Secrétaire saisit un acte et le soumet pour validation
-        seConnecterComme(secretaire.id(), secretaire.identifiant(), Role.SECRETAIRE, dio.id(), par.id());
+        seConnecterComme(secretaire.id(), secretaire.identifiant(), Role.SECRETAIRE, NiveauEcclesial.PAROISSE, provYde.id(), dio.id(), par.id());
 
         ActeBaptemeRequest req1 = new ActeBaptemeRequest(
                 OrigineActe.NOUVEAU, "MBARGA", "Jean-Baptiste", "Jean", "M",
@@ -118,7 +135,7 @@ class BaptemeTest {
                 .isInstanceOf(BusinessException.class);
 
         // 3. Le Curé scelle l'acte avec son PIN -> IUN atomique généré
-        seConnecterComme(cure.id(), cure.identifiant(), Role.CURE, dio.id(), par.id());
+        seConnecterComme(cure.id(), cure.identifiant(), Role.CURE, NiveauEcclesial.PAROISSE, provYde.id(), dio.id(), par.id());
         ActeBaptemeResponse scelle = acteService.scellerActe(brouillon.id(), new ScellementRequest("1234"), "127.0.0.1");
         assertThat(scelle.statut()).isEqualTo(StatutActe.SCELLE);
         assertThat(scelle.iun()).isEqualTo("CM-YDE-P001-2026-00001");
@@ -145,19 +162,22 @@ class BaptemeTest {
         ), "127.0.0.1");
         assertThat(avMajeur.statut()).isEqualTo(StatutAvenant.EN_ATTENTE_CHANCELIER);
 
-        seConnecterComme(chancelier.id(), chancelier.identifiant(), Role.CHANCELIER, dio.id(), null);
+        seConnecterComme(chancelier.id(), chancelier.identifiant(), Role.CHANCELIER, NiveauEcclesial.DIOCESE, provYde.id(), dio.id(), null);
         AvenantResponse avApprouve = avenantService.approuverAvenantMajeur(
                 avMajeur.id(), new ScellementRequest("5678"), "127.0.0.1");
         assertThat(avApprouve.statut()).isEqualTo(StatutAvenant.APPROUVE);
 
+        // Un Secrétaire de Province ou de Diocèse peut consulter l'acte dans son périmètre
+        seConnecterComme(secProv.id(), secProv.identifiant(), Role.SECRETAIRE, NiveauEcclesial.PROVINCE, provYde.id(), null, null);
         ActeBaptemeResponse acteFinal = acteService.consulter(scelle.id());
         assertThat(acteFinal.nom()).isEqualTo("MBARGA-ATANGANA");
         assertThat(acteFinal.lieuNaissance()).isEqualTo("Yaoundé 2e");
         assertThat(acteFinal.version()).isEqualTo(versionAvantAvenant + 2);
     }
 
-    private void seConnecterComme(UUID id, String identifiant, Role role, UUID dioceseId, UUID paroisseId) {
+    private void seConnecterComme(UUID id, String identifiant, Role role, NiveauEcclesial niveau,
+                                  UUID provinceId, UUID dioceseId, UUID paroisseId) {
         TenantContext.setCurrentUser(new UserPrincipal(
-                id, identifiant, "", role, dioceseId, paroisseId, identifiant, "FR", true, false, false));
+                id, identifiant, "", role, niveau, provinceId, dioceseId, paroisseId, identifiant, "FR", true, false, false));
     }
 }

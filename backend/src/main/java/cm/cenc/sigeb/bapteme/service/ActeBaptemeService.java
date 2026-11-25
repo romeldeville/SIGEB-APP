@@ -14,6 +14,7 @@ import cm.cenc.sigeb.referentiel.repository.UtilisateurRepository;
 import cm.cenc.sigeb.shared.crypto.service.CryptoService;
 import cm.cenc.sigeb.shared.exception.BusinessException;
 import cm.cenc.sigeb.shared.security.context.TenantContext;
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import cm.cenc.sigeb.shared.security.model.UserPrincipal;
 import org.springframework.http.HttpStatus;
@@ -65,7 +66,7 @@ public class ActeBaptemeService {
     @Transactional
     public ActeBaptemeResponse creerActe(ActeBaptemeRequest req, String clientIp) {
         UserPrincipal caller = TenantContext.requireCurrentUser();
-        if (caller.role() != Role.CURE && caller.role() != Role.SECRETAIRE) {
+        if (caller.niveau() != NiveauEcclesial.PAROISSE || (caller.role() != Role.CURE && caller.role() != Role.SECRETAIRE)) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "ACCES_REFUSE",
                     "Seul le Curé ou le Secrétaire paroissial peut saisir un acte de baptême");
         }
@@ -259,10 +260,11 @@ public class ActeBaptemeService {
     private ActeBapteme chargerActeDansPerimetre(UUID acteId, UserPrincipal caller) {
         ActeBapteme acte = acteRepository.findById(acteId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "ACTE_INTROUVABLE", "Acte de baptême introuvable"));
-        boolean autorise = switch (caller.role()) {
-            case ADMIN_NATIONAL -> true;
-            case CHANCELIER -> acte.getParoisse().getDiocese().getId().equals(caller.dioceseId());
-            case CURE, SECRETAIRE -> acte.getParoisse().getId().equals(caller.paroisseId());
+        boolean autorise = switch (caller.niveau()) {
+            case NATIONAL -> true;
+            case PROVINCE -> acte.getParoisse().getDiocese().getProvince().getId().equals(caller.provinceId());
+            case DIOCESE -> acte.getParoisse().getDiocese().getId().equals(caller.dioceseId());
+            case PAROISSE -> acte.getParoisse().getId().equals(caller.paroisseId());
         };
         if (!autorise) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "HORS_PERIMETRE", "Cet acte est hors de votre périmètre ecclésial");

@@ -25,6 +25,7 @@ import cm.cenc.sigeb.referentiel.repository.UtilisateurRepository;
 import cm.cenc.sigeb.referentiel.service.ReferentielService;
 import cm.cenc.sigeb.referentiel.service.UtilisateurService;
 import cm.cenc.sigeb.shared.security.context.TenantContext;
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import cm.cenc.sigeb.shared.security.model.UserPrincipal;
 import cm.cenc.sigeb.verification.dto.QrVerifyRequest;
@@ -84,7 +85,7 @@ class CarteVerificationMentionTest {
     void emissionCartePdfRotationCleMentionEtDuplicata() {
         // 1. Setup Paroisse A (origine) & Paroisse B (mariage)
         Utilisateur admin = utilisateurRepository.findByIdentifiant("admin@sigeb.cm").orElseThrow();
-        seConnecter(admin.getId(), admin.getIdentifiant(), Role.ADMIN_NATIONAL, null, null);
+        seConnecter(admin.getId(), admin.getIdentifiant(), Role.ADMIN_NATIONAL, NiveauEcclesial.NATIONAL, null, null, null);
 
         ProvinceResponse provDla = referentielService.listerProvinces().stream()
                 .filter(p -> "DLA".equals(p.code())).findFirst().orElseThrow();
@@ -96,11 +97,13 @@ class CarteVerificationMentionTest {
                 dio.id(), "P020", "PAROISSE", "Paroisse Notre-Dame", "Our Lady Parish", "Bonapriso", null));
 
         UtilisateurResponse cureA = utilisateurService.creerUtilisateur(new UtilisateurCreateRequest(
-                "cure.a@sigeb.cm", "CureAPass2026!", "Abbé Cure A", null, Role.CURE, dio.id(), parA.id(), "FR"));
+                "cure.a@sigeb.cm", "CureAPass2026!", "Abbé Cure A", null,
+                Role.CURE, NiveauEcclesial.PAROISSE, provDla.id(), dio.id(), parA.id(), "FR"));
         UtilisateurResponse cureB = utilisateurService.creerUtilisateur(new UtilisateurCreateRequest(
-                "cure.b@sigeb.cm", "CureBPass2026!", "Abbé Cure B", null, Role.CURE, dio.id(), parB.id(), "FR"));
+                "cure.b@sigeb.cm", "CureBPass2026!", "Abbé Cure B", null,
+                Role.CURE, NiveauEcclesial.PAROISSE, provDla.id(), dio.id(), parB.id(), "FR"));
 
-        seConnecter(cureA.id(), cureA.identifiant(), Role.CURE, dio.id(), parA.id());
+        seConnecter(cureA.id(), cureA.identifiant(), Role.CURE, NiveauEcclesial.PAROISSE, provDla.id(), dio.id(), parA.id());
         authService.changePin(new ChangePinRequest("CureAPass2026!", "1111"));
 
         // 2. Saisie & scellement de l'acte dans Paroisse A
@@ -139,14 +142,14 @@ class CarteVerificationMentionTest {
         assertThat(scanApresRotation.valide()).isTrue();
 
         // 6. Mention marginale inter-paroisses : Paroisse B déclare un MARIAGE, Paroisse A valide avec PIN
-        seConnecter(cureB.id(), cureB.identifiant(), Role.CURE, dio.id(), parB.id());
+        seConnecter(cureB.id(), cureB.identifiant(), Role.CURE, NiveauEcclesial.PAROISSE, provDla.id(), dio.id(), parB.id());
         MentionResponse mentionDecl = mentionService.declarerMention(new MentionCreateRequest(
                 scelle.iun(), TypeSacrement.MARIAGE, LocalDate.of(2026, 4, 10),
                 "Paroisse Notre-Dame Bonapriso", "Abbé Cure B", "Marc FOUDA", "REG-MAR-2026-08"
         ), "127.0.0.1");
         assertThat(mentionDecl.statut()).isEqualTo(StatutMention.EN_ATTENTE_ORIGINE);
 
-        seConnecter(cureA.id(), cureA.identifiant(), Role.CURE, dio.id(), parA.id());
+        seConnecter(cureA.id(), cureA.identifiant(), Role.CURE, NiveauEcclesial.PAROISSE, provDla.id(), dio.id(), parA.id());
         MentionResponse mentionVal = mentionService.validerMention(mentionDecl.id(), new ScellementRequest("1111"), "127.0.0.1");
         assertThat(mentionVal.statut()).isEqualTo(StatutMention.INSCRITE);
 
@@ -179,15 +182,16 @@ class CarteVerificationMentionTest {
         assertThat(scanFalsifie.resultat()).isEqualTo(ResultatVerificationQr.INVALIDE_OU_FALSIFIE);
 
         // 9. Recherche nationale tracée
-        seConnecter(cureB.id(), cureB.identifiant(), Role.CURE, dio.id(), parB.id());
+        seConnecter(cureB.id(), cureB.identifiant(), Role.CURE, NiveauEcclesial.PAROISSE, provDla.id(), dio.id(), parB.id());
         List<RechercheNationaleItemResponse> res = verificationService.rechercheNationale(
                 new RechercheNationaleRequest(scelle.iun(), null, null, null, "Vérification dossier parrainage"), "127.0.0.1");
         assertThat(res).hasSize(1);
         assertThat(res.get(0).etatLibreMatrimonial()).isFalse();
     }
 
-    private void seConnecter(UUID id, String identifiant, Role role, UUID dioceseId, UUID paroisseId) {
+    private void seConnecter(UUID id, String identifiant, Role role, NiveauEcclesial niveau,
+                             UUID provinceId, UUID dioceseId, UUID paroisseId) {
         TenantContext.setCurrentUser(new UserPrincipal(
-                id, identifiant, "", role, dioceseId, paroisseId, identifiant, "FR", true, false, false));
+                id, identifiant, "", role, niveau, provinceId, dioceseId, paroisseId, identifiant, "FR", true, false, false));
     }
 }

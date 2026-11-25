@@ -16,7 +16,7 @@ public record ParoisseCreateRequest(
         String code,
 
         @NotBlank(message = "Le type de paroisse est obligatoire")
-        @Pattern(regexp = "^(PAROISSE|QUASI_PAROISSE|MISSION)$", message = "Type invalide")
+        @Pattern(regexp = "^(PAROISSE|CATHEDRALE|QUASI_PAROISSE|MISSION)$", message = "Type invalide")
         String typeParoisse,
 
         @NotBlank(message = "Le nom en français est obligatoire")

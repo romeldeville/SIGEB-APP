@@ -1,5 +1,6 @@
 package cm.cenc.sigeb.referentiel.entity;
 
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import jakarta.persistence.*;
 import java.time.LocalDate;
@@ -20,6 +21,14 @@ public class AffectationUtilisateur {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 25)
     private Role role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 15)
+    private NiveauEcclesial niveau = NiveauEcclesial.PAROISSE;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "province_id")
+    private ProvinceEcclesiastique province;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "diocese_id")
@@ -45,6 +54,12 @@ public class AffectationUtilisateur {
 
     public Role getRole() { return role; }
     public void setRole(Role role) { this.role = role; }
+
+    public NiveauEcclesial getNiveau() { return niveau; }
+    public void setNiveau(NiveauEcclesial niveau) { this.niveau = niveau; }
+
+    public ProvinceEcclesiastique getProvince() { return province; }
+    public void setProvince(ProvinceEcclesiastique province) { this.province = province; }
 
     public Diocese getDiocese() { return diocese; }
     public void setDiocese(Diocese diocese) { this.diocese = diocese; }

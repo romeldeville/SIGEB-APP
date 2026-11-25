@@ -6,6 +6,7 @@ import cm.cenc.sigeb.referentiel.entity.Utilisateur;
 import cm.cenc.sigeb.referentiel.repository.UtilisateurRepository;
 import cm.cenc.sigeb.shared.crypto.service.TotpService;
 import cm.cenc.sigeb.shared.exception.BusinessException;
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import cm.cenc.sigeb.shared.security.context.TenantContext;
 import cm.cenc.sigeb.shared.security.model.UserPrincipal;
@@ -123,6 +124,8 @@ class AuthTest {
                 admin.getIdentifiant(),
                 admin.getMotDePasseHash(),
                 Role.ADMIN_NATIONAL,
+                NiveauEcclesial.NATIONAL,
+                null,
                 null,
                 null,
                 admin.getNomComplet(),

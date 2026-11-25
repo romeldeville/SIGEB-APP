@@ -23,6 +23,7 @@ import cm.cenc.sigeb.referentiel.repository.UtilisateurRepository;
 import cm.cenc.sigeb.shared.crypto.service.CryptoService;
 import cm.cenc.sigeb.shared.exception.BusinessException;
 import cm.cenc.sigeb.shared.security.context.TenantContext;
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import cm.cenc.sigeb.shared.security.model.UserPrincipal;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -77,7 +78,7 @@ public class CarteEmiseService {
     @Transactional
     public CarteEmiseResponse emettreCarte(UUID acteId, EmissionCarteRequest req, String clientIp) {
         UserPrincipal caller = TenantContext.requireCurrentUser();
-        if (caller.role() != Role.CURE && caller.role() != Role.SECRETAIRE) {
+        if (caller.niveau() != NiveauEcclesial.PAROISSE || (caller.role() != Role.CURE && caller.role() != Role.SECRETAIRE)) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "ACCES_REFUSE",
                     "Seul le Curé ou le Secrétaire paroissial peut émettre une carte/extrait");
         }

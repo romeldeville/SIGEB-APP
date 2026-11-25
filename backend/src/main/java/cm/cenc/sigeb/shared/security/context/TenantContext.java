@@ -1,5 +1,6 @@
 package cm.cenc.sigeb.shared.security.context;
 
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import cm.cenc.sigeb.shared.security.model.UserPrincipal;
 
@@ -26,6 +27,14 @@ public final class TenantContext {
 
     public static Role getRole() {
         return getCurrentUser().map(UserPrincipal::role).orElse(null);
+    }
+
+    public static NiveauEcclesial getNiveau() {
+        return getCurrentUser().map(UserPrincipal::niveau).orElse(null);
+    }
+
+    public static UUID getProvinceId() {
+        return getCurrentUser().map(UserPrincipal::provinceId).orElse(null);
     }
 
     public static UUID getDioceseId() {

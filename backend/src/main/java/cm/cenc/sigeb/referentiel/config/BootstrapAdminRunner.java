@@ -4,6 +4,7 @@ import cm.cenc.sigeb.referentiel.entity.Utilisateur;
 import cm.cenc.sigeb.referentiel.repository.UtilisateurRepository;
 
 import cm.cenc.sigeb.shared.crypto.service.CryptoService;
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +44,7 @@ public class BootstrapAdminRunner implements CommandLineRunner {
             admin.setMotDePasseHash(cryptoService.hashPassword(adminPassword));
             admin.setNomComplet(adminNom);
             admin.setRole(Role.ADMIN_NATIONAL);
+            admin.setNiveau(NiveauEcclesial.NATIONAL);
             admin.setMdpAChanger(true);
             admin.setStatut("ACTIF");
             admin.setLanguePreferee("FR");

@@ -1,5 +1,6 @@
 package cm.cenc.sigeb.referentiel.dto;
 
+import cm.cenc.sigeb.shared.security.model.NiveauEcclesial;
 import cm.cenc.sigeb.shared.security.model.Role;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -26,6 +27,10 @@ public record UtilisateurCreateRequest(
         @NotNull(message = "Le rôle est obligatoire")
         Role role,
 
+        @NotNull(message = "Le niveau ecclésial est obligatoire (NATIONAL, PROVINCE, DIOCESE, PAROISSE)")
+        NiveauEcclesial niveau,
+
+        UUID provinceId,
         UUID dioceseId,
         UUID paroisseId,
 

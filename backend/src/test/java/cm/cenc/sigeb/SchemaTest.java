@@ -46,15 +46,16 @@ class SchemaTest {
 
     @Test
     void rlsCloisonneLesActesParParoisse() throws SQLException {
+        UUID prov = jdbc.queryForObject("SELECT id FROM province_ecclesiastique WHERE code='YDE'", UUID.class);
         UUID dio = jdbc.queryForObject("""
             INSERT INTO diocese(province_id, code, type_diocese, nom_fr, nom_en, siege)
-            SELECT id, 'TST', 'DIOCESE', 'Test', 'Test', 'Yaoundé' FROM province_ecclesiastique WHERE code='YDE'
-            RETURNING id""", UUID.class);
+            VALUES (?, 'TST', 'DIOCESE', 'Test', 'Test', 'Yaoundé')
+            RETURNING id""", UUID.class, prov);
         UUID pA = paroisse(dio, "PA");
         UUID pB = paroisse(dio, "PB");
         UUID user = jdbc.queryForObject("""
-            INSERT INTO utilisateur(identifiant, mot_de_passe_hash, nom_complet, role, diocese_id, paroisse_id)
-            VALUES ('cure-a@test', 'x', 'Curé A', 'CURE', ?, ?) RETURNING id""", UUID.class, dio, pA);
+            INSERT INTO utilisateur(identifiant, mot_de_passe_hash, nom_complet, role, niveau, province_id, diocese_id, paroisse_id)
+            VALUES ('cure-a@test', 'x', 'Curé A', 'CURE', 'PAROISSE', ?, ?, ?) RETURNING id""", UUID.class, prov, dio, pA);
         acte(pA, user, "1");
         acte(pB, user, "2");
 

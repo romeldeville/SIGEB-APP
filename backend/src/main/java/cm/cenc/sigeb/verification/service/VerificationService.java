@@ -149,9 +149,9 @@ public class VerificationService {
     @Transactional(readOnly = true)
     public List<RechercheNationaleItemResponse> rechercheNationale(RechercheNationaleRequest req, String clientIp) {
         UserPrincipal caller = TenantContext.requireCurrentUser();
-        if (caller.role() == Role.SECRETAIRE) {
+        if (caller.role() == Role.SECRETAIRE && caller.niveau() == cm.cenc.sigeb.shared.security.model.NiveauEcclesial.PAROISSE) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "ACCES_REFUSE",
-                    "La recherche nationale inter-paroisses est réservée aux Curés, Chanceliers et Admin National");
+                    "La recherche nationale inter-paroisses est réservée aux Curés, Chanceliers, Secrétariats supérieurs et Admin National");
         }
 
         List<ActeBapteme> resultats;

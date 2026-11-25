@@ -13,6 +13,8 @@ public record UserPrincipal(
         String identifiant,
         String motDePasseHash,
         Role role,
+        NiveauEcclesial niveau,
+        UUID provinceId,
         UUID dioceseId,
         UUID paroisseId,
         String nomComplet,
@@ -24,36 +26,27 @@ public record UserPrincipal(
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
+        return List.of(
+                new SimpleGrantedAuthority("ROLE_" + role.name()),
+                new SimpleGrantedAuthority("NIVEAU_" + niveau.name())
+        );
     }
 
     @Override
-    public String getPassword() {
-        return motDePasseHash;
-    }
+    public String getPassword() { return motDePasseHash; }
 
     @Override
-    public String getUsername() {
-        return identifiant;
-    }
+    public String getUsername() { return identifiant; }
 
     @Override
-    public boolean isAccountNonExpired() {
-        return true;
-    }
+    public boolean isAccountNonExpired() { return true; }
 
     @Override
-    public boolean isAccountNonLocked() {
-        return actif;
-    }
+    public boolean isAccountNonLocked() { return actif; }
 
     @Override
-    public boolean isCredentialsNonExpired() {
-        return true;
-    }
+    public boolean isCredentialsNonExpired() { return true; }
 
     @Override
-    public boolean isEnabled() {
-        return actif;
-    }
+    public boolean isEnabled() { return actif; }
 }
