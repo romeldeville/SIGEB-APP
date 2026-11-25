@@ -12,6 +12,7 @@ spring:
     open-in-view: false
   flyway:
     # Les migrations s'exécutent avec le propriétaire du schéma
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/sigeb}
     user: ${FLYWAY_USER:sigeb_owner}
     password: ${FLYWAY_PASSWORD:sigeb_owner_dev}
     locations: classpath:db/migration

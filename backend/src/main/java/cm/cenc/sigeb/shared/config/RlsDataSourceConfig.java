@@ -2,6 +2,7 @@ package cm.cenc.sigeb.shared.config;
 
 import cm.cenc.sigeb.shared.security.context.TenantContext;
 import cm.cenc.sigeb.shared.security.model.UserPrincipal;
+import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Configuration;
@@ -34,6 +35,11 @@ public class RlsDataSourceConfig implements BeanPostProcessor {
 
         RlsAwareDataSource(DataSource targetDataSource) {
             super(targetDataSource);
+        }
+
+        public String getJdbcUrl() {
+            DataSource target = getTargetDataSource();
+            return (target instanceof HikariDataSource hikari) ? hikari.getJdbcUrl() : null;
         }
 
         @Override
