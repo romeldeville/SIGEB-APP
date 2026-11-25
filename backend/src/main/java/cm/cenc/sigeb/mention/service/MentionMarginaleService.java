@@ -172,12 +172,21 @@ public class MentionMarginaleService {
     @Transactional(readOnly = true)
     public List<MentionResponse> listerBoiteReceptionParoisseOrigine() {
         UserPrincipal caller = TenantContext.requireCurrentUser();
-        if (caller.paroisseId() == null) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "PAROISSE_REQUISE", "Paroisse requise");
-        }
-        return mentionRepository.findByActeBaptemeParoisseIdAndStatutOrderByDeclareLeDesc(
-                caller.paroisseId(), StatutMention.EN_ATTENTE_ORIGINE
-        ).stream().map(this::toResponse).toList();
+        List<MentionMarginale> mentions = switch (caller.niveau()) {
+            case NATIONAL -> mentionRepository.findByStatutOrderByDeclareLeDesc(StatutMention.EN_ATTENTE_ORIGINE);
+            case PROVINCE -> mentionRepository.findByActeBaptemeParoisseDioceseProvinceIdAndStatutOrderByDeclareLeDesc(
+                    caller.provinceId(), StatutMention.EN_ATTENTE_ORIGINE);
+            case DIOCESE -> mentionRepository.findByActeBaptemeParoisseDioceseIdAndStatutOrderByDeclareLeDesc(
+                    caller.dioceseId(), StatutMention.EN_ATTENTE_ORIGINE);
+            case PAROISSE -> {
+                if (caller.paroisseId() == null) {
+                    throw new BusinessException(HttpStatus.BAD_REQUEST, "PAROISSE_REQUISE", "Paroisse requise");
+                }
+                yield mentionRepository.findByActeBaptemeParoisseIdAndStatutOrderByDeclareLeDesc(
+                        caller.paroisseId(), StatutMention.EN_ATTENTE_ORIGINE);
+            }
+        };
+        return mentions.stream().map(this::toResponse).toList();
     }
 
     private MentionResponse toResponse(MentionMarginale m) {

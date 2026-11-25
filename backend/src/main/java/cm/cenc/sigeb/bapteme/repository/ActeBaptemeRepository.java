@@ -16,6 +16,18 @@ public interface ActeBaptemeRepository extends JpaRepository<ActeBapteme, UUID> 
 
     Optional<ActeBapteme> findByIun(String iun);
 
+    List<ActeBapteme> findAllByOrderByCreeLeDesc();
+
+    List<ActeBapteme> findByStatutOrderByCreeLeDesc(StatutActe statut);
+
+    List<ActeBapteme> findByParoisseDioceseProvinceIdOrderByCreeLeDesc(UUID provinceId);
+
+    List<ActeBapteme> findByParoisseDioceseProvinceIdAndStatutOrderByCreeLeDesc(UUID provinceId, StatutActe statut);
+
+    List<ActeBapteme> findByParoisseDioceseIdOrderByCreeLeDesc(UUID dioceseId);
+
+    List<ActeBapteme> findByParoisseDioceseIdAndStatutOrderByCreeLeDesc(UUID dioceseId, StatutActe statut);
+
     List<ActeBapteme> findByParoisseIdOrderByCreeLeDesc(UUID paroisseId);
 
     List<ActeBapteme> findByParoisseIdAndStatutOrderByCreeLeDesc(UUID paroisseId, StatutActe statut);

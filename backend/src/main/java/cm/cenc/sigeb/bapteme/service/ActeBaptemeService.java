@@ -188,13 +188,26 @@ public class ActeBaptemeService {
     @Transactional(readOnly = true)
     public List<ActeBaptemeResponse> listerParoisse(StatutActe statut) {
         UserPrincipal caller = TenantContext.requireCurrentUser();
-        if (caller.paroisseId() == null) {
-            throw new BusinessException(HttpStatus.BAD_REQUEST, "PAROISSE_REQUISE",
-                    "Cet endpoint liste les actes de la paroisse affectée");
-        }
-        List<ActeBapteme> actes = statut != null
-                ? acteRepository.findByParoisseIdAndStatutOrderByCreeLeDesc(caller.paroisseId(), statut)
-                : acteRepository.findByParoisseIdOrderByCreeLeDesc(caller.paroisseId());
+        List<ActeBapteme> actes = switch (caller.niveau()) {
+            case NATIONAL -> statut != null
+                    ? acteRepository.findByStatutOrderByCreeLeDesc(statut)
+                    : acteRepository.findAllByOrderByCreeLeDesc();
+            case PROVINCE -> statut != null
+                    ? acteRepository.findByParoisseDioceseProvinceIdAndStatutOrderByCreeLeDesc(caller.provinceId(), statut)
+                    : acteRepository.findByParoisseDioceseProvinceIdOrderByCreeLeDesc(caller.provinceId());
+            case DIOCESE -> statut != null
+                    ? acteRepository.findByParoisseDioceseIdAndStatutOrderByCreeLeDesc(caller.dioceseId(), statut)
+                    : acteRepository.findByParoisseDioceseIdOrderByCreeLeDesc(caller.dioceseId());
+            case PAROISSE -> {
+                if (caller.paroisseId() == null) {
+                    throw new BusinessException(HttpStatus.BAD_REQUEST, "PAROISSE_REQUISE",
+                            "Aucune paroisse affectée à ce compte");
+                }
+                yield statut != null
+                        ? acteRepository.findByParoisseIdAndStatutOrderByCreeLeDesc(caller.paroisseId(), statut)
+                        : acteRepository.findByParoisseIdOrderByCreeLeDesc(caller.paroisseId());
+            }
+        };
         return actes.stream().map(this::toResponse).toList();
     }
 
