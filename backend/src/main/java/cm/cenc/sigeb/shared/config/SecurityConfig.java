@@ -1,5 +1,6 @@
 package cm.cenc.sigeb.shared.config;
 
+import cm.cenc.sigeb.shared.idempotence.filter.IdempotencyFilter;
 import cm.cenc.sigeb.shared.security.filter.JwtAuthenticationFilter;
 
 import org.springframework.context.annotation.Bean;
@@ -23,9 +24,11 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final IdempotencyFilter idempotencyFilter;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, IdempotencyFilter idempotencyFilter) {
         this.jwtAuthFilter = jwtAuthFilter;
+        this.idempotencyFilter = idempotencyFilter;
     }
 
     @Bean
@@ -47,6 +50,7 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterAfter(idempotencyFilter, JwtAuthenticationFilter.class)
                 .build();
     }
 

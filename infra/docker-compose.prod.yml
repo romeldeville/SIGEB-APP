@@ -1,0 +1,61 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: sigeb-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ../frontend/build/web:/srv/flutter-web:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    networks:
+      - sigeb_net
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: sigeb-api
+    restart: unless-stopped
+    env_file:
+      - ../.env
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/sigeb
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - sigeb_net
+
+  db:
+    image: postgres:16-alpine
+    container_name: sigeb-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sigeb
+      POSTGRES_USER: ${FLYWAY_USER:-sigeb_owner}
+      POSTGRES_PASSWORD: ${FLYWAY_PASSWORD}
+    volumes:
+      - sigeb_pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FLYWAY_USER:-sigeb_owner} -d sigeb"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - sigeb_net
+
+volumes:
+  sigeb_pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  sigeb_net:
+    driver: bridge
