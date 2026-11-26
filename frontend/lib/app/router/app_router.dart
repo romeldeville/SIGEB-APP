@@ -32,6 +32,10 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/baptemes', builder: (_, _) => const BaptemesListScreen()),
       GoRoute(path: '/baptemes/nouveau', builder: (_, _) => const BaptemeFormScreen()),
       GoRoute(
+        path: '/baptemes/:id/modifier',
+        builder: (_, state) => BaptemeFormScreen(acteId: state.pathParameters['id']),
+      ),
+      GoRoute(
         path: '/baptemes/:id',
         builder: (_, state) => BaptemeDetailScreen(acteId: state.pathParameters['id']!),
       ),

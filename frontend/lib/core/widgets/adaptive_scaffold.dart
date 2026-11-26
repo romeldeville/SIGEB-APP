@@ -41,10 +41,10 @@ class AdaptiveScaffold extends ConsumerWidget {
 
     final items = <_NavItem>[
       _NavItem('/dashboard', Icons.dashboard_outlined, Icons.dashboard_rounded, strings.navDashboard),
-      if (session?.niveau == 'PAROISSE')
+      if (session != null)
         _NavItem('/baptemes', Icons.menu_book_outlined, Icons.menu_book_rounded, strings.navActes),
       _NavItem('/verification/qr', Icons.qr_code_scanner, Icons.qr_code_2_rounded, strings.navScan),
-      if (session?.niveau == 'PAROISSE')
+      if (session != null)
         _NavItem('/mentions', Icons.sync_alt_outlined, Icons.sync_alt_rounded, strings.navMentions),
       if (session != null && session.role != 'SECRETAIRE')
         _NavItem('/referentiel', Icons.account_tree_outlined, Icons.account_tree_rounded, strings.navReferentiel),

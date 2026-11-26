@@ -22,6 +22,8 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
   String? _error;
   String? _integriteMsg;
   bool _integriteOk = true;
+  final _iunFilterCtrl = TextEditingController();
+  String _actionFilter = '';
 
   @override
   void initState() {
@@ -30,8 +32,15 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
   }
 
   Future<void> _load() async {
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
-      final list = await ref.read(auditRepositoryProvider).consulter();
+      final list = await ref.read(auditRepositoryProvider).consulter(
+            iun: _iunFilterCtrl.text,
+            typeAction: _actionFilter.isEmpty ? null : _actionFilter,
+          );
       setState(() {
         _logs = list;
         _loading = false;
@@ -68,6 +77,44 @@ class _AuditScreenState extends ConsumerState<AuditScreen> {
       title: strings.navAudit,
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+            child: Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: [
+                SizedBox(
+                  width: 240,
+                  child: TextField(
+                    controller: _iunFilterCtrl,
+                    decoration: const InputDecoration(labelText: 'Filtrer par IUN', isDense: true),
+                  ),
+                ),
+                SizedBox(
+                  width: 220,
+                  child: DropdownButtonFormField<String>(
+                    initialValue: _actionFilter,
+                    decoration: const InputDecoration(labelText: 'Type d\'action', isDense: true),
+                    items: const [
+                      DropdownMenuItem(value: '', child: Text('Toutes les actions')),
+                      DropdownMenuItem(value: 'CONNEXION', child: Text('CONNEXION')),
+                      DropdownMenuItem(value: 'CREATION_ACTE', child: Text('CREATION_ACTE')),
+                      DropdownMenuItem(value: 'SCELLEMENT', child: Text('SCELLEMENT')),
+                      DropdownMenuItem(value: 'RECTIFICATION', child: Text('RECTIFICATION')),
+                      DropdownMenuItem(value: 'EMISSION_CARTE', child: Text('EMISSION_CARTE')),
+                      DropdownMenuItem(value: 'REVOCATION_CARTE', child: Text('REVOCATION_CARTE')),
+                      DropdownMenuItem(value: 'DECLARATION_MENTION', child: Text('DECLARATION_MENTION')),
+                      DropdownMenuItem(value: 'VALIDATION_MENTION', child: Text('VALIDATION_MENTION')),
+                      DropdownMenuItem(value: 'RECHERCHE_NATIONALE', child: Text('RECHERCHE_NATIONALE')),
+                    ],
+                    onChanged: (v) => setState(() => _actionFilter = v ?? ''),
+                  ),
+                ),
+                ElevatedButton.icon(onPressed: _load, icon: const Icon(Icons.filter_list), label: const Text('Filtrer')),
+              ],
+            ),
+          ),
           if (isAdmin)
             Padding(
               padding: const EdgeInsets.all(12),

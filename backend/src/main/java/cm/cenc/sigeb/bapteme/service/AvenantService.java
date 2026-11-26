@@ -83,9 +83,14 @@ public class AvenantService {
         Utilisateur cure = utilisateurRepository.findById(caller.id()).orElseThrow();
         Map<String, Object> anciennes = extraireValeursActuelles(acte, req.nouvellesValeurs());
 
+        int maxVersionExistante = avenantRepository.findByActeBaptemeIdOrderByDemandeLeDesc(acte.getId()).stream()
+                .mapToInt(AvenantRectification::getVersionCible)
+                .max()
+                .orElse(acte.getVersion());
+
         AvenantRectification avenant = new AvenantRectification();
         avenant.setActeBapteme(acte);
-        avenant.setVersionCible(acte.getVersion() + 1);
+        avenant.setVersionCible(Math.max(acte.getVersion(), maxVersionExistante) + 1);
         avenant.setGravite(req.gravite());
         avenant.setAnciennesValeurs(anciennes);
         avenant.setNouvellesValeurs(req.nouvellesValeurs());

@@ -24,4 +24,4 @@ management:
         include: health
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8086}

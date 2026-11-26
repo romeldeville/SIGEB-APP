@@ -59,8 +59,11 @@ class AuthSession {
 
   bool get isCure => role == 'CURE';
   bool get isChancelier => role == 'CHANCELIER';
+  bool get isResponsableProvince => role == 'RESPONSABLE_PROVINCE';
   bool get isAdminNational => role == 'ADMIN_NATIONAL';
   bool get isParoisse => niveau == 'PAROISSE';
   bool get canSignActs =>
       role == 'CURE' || role == 'CHANCELIER' || role == 'RESPONSABLE_PROVINCE' || role == 'ADMIN_NATIONAL';
+  bool get canRevokeCard => role == 'CURE' || role == 'CHANCELIER' || role == 'ADMIN_NATIONAL';
+  bool get canMutateUsers => role == 'ADMIN_NATIONAL' || role == 'RESPONSABLE_PROVINCE' || role == 'CHANCELIER';
 }

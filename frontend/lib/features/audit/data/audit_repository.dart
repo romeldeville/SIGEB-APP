@@ -8,8 +8,12 @@ class AuditRepository {
   final Dio _dio;
   AuditRepository(this._dio);
 
-  Future<List<AuditEntry>> consulter({int limite = 50}) async {
-    final resp = await _dio.get('/audit', queryParameters: {'limite': limite});
+  Future<List<AuditEntry>> consulter({String? iun, String? typeAction, int limite = 50}) async {
+    final resp = await _dio.get('/audit', queryParameters: {
+      'limite': limite,
+      if (iun != null && iun.trim().isNotEmpty) 'iun': iun.trim(),
+      if (typeAction != null && typeAction.trim().isNotEmpty) 'typeAction': typeAction.trim(),
+    });
     return (resp.data as List).map((e) => AuditEntry.fromJson(e as Map<String, dynamic>)).toList();
   }
 

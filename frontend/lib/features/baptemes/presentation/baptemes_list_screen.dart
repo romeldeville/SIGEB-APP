@@ -6,6 +6,7 @@ import '../../../app/l10n/app_strings.dart';
 import '../../../app/theme/app_theme.dart';
 import '../../../core/network/dio_client.dart';
 import '../../../core/widgets/adaptive_scaffold.dart';
+import '../../auth/presentation/auth_controller.dart';
 import '../data/bapteme_repository.dart';
 import '../domain/acte_bapteme.dart';
 
@@ -40,17 +41,20 @@ class _BaptemesListScreenState extends ConsumerState<BaptemesListScreen> {
   @override
   Widget build(BuildContext context) {
     final strings = ref.watch(stringsProvider);
+    final isParoisse = ref.watch(authControllerProvider).session?.isParoisse == true;
 
     return AdaptiveScaffold(
       currentRoute: '/baptemes',
       title: strings.navActes,
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppTheme.navy,
-        foregroundColor: Colors.white,
-        onPressed: () => context.go('/baptemes/nouveau'),
-        icon: const Icon(Icons.add),
-        label: Text(strings.newAct),
-      ),
+      floatingActionButton: isParoisse
+          ? FloatingActionButton.extended(
+              backgroundColor: AppTheme.navy,
+              foregroundColor: Colors.white,
+              onPressed: () => context.go('/baptemes/nouveau'),
+              icon: const Icon(Icons.add),
+              label: Text(strings.newAct),
+            )
+          : null,
       body: Column(
         children: [
           SingleChildScrollView(

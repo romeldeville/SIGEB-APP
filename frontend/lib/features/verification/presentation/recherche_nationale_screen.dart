@@ -17,6 +17,9 @@ class RechercheNationaleScreen extends ConsumerStatefulWidget {
 
 class _RechercheNationaleScreenState extends ConsumerState<RechercheNationaleScreen> {
   final _iunCtrl = TextEditingController();
+  final _nomCtrl = TextEditingController();
+  final _prenomsCtrl = TextEditingController();
+  final _dateNaissCtrl = TextEditingController();
   final _motifCtrl = TextEditingController();
   List<Map<String, dynamic>> _results = [];
   bool _loading = false;
@@ -27,14 +30,22 @@ class _RechercheNationaleScreenState extends ConsumerState<RechercheNationaleScr
       setState(() => _error = 'Le motif canonique est obligatoire pour la traçabilité.');
       return;
     }
+    if (_iunCtrl.text.trim().isEmpty &&
+        (_nomCtrl.text.trim().isEmpty || _prenomsCtrl.text.trim().isEmpty || _dateNaissCtrl.text.trim().isEmpty)) {
+      setState(() => _error = 'Saisissez un IUN exact OU le triplet Nom + Prénoms + Date de naissance.');
+      return;
+    }
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       final res = await ref.read(verificationRepositoryProvider).rechercheNationale(
-            iun: _iunCtrl.text,
-            motif: _motifCtrl.text,
+            iun: _iunCtrl.text.trim().isEmpty ? null : _iunCtrl.text.trim(),
+            nom: _nomCtrl.text.trim().isEmpty ? null : _nomCtrl.text.trim(),
+            prenoms: _prenomsCtrl.text.trim().isEmpty ? null : _prenomsCtrl.text.trim(),
+            dateNaissance: _dateNaissCtrl.text.trim().isEmpty ? null : _dateNaissCtrl.text.trim(),
+            motif: _motifCtrl.text.trim(),
           );
       setState(() {
         _results = res;
@@ -61,6 +72,18 @@ class _RechercheNationaleScreenState extends ConsumerState<RechercheNationaleScr
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
           TextField(controller: _iunCtrl, decoration: const InputDecoration(labelText: 'IUN exact (ex. CM-YDE-P001-2026-00001)')),
+          const SizedBox(height: 10),
+          const Text('— OU recherche par identité complète —', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const SizedBox(height: 10),
+          ResponsiveGrid(
+            minItemWidth: 220,
+            maxColumns: 3,
+            children: [
+              TextField(controller: _nomCtrl, decoration: const InputDecoration(labelText: 'Nom')),
+              TextField(controller: _prenomsCtrl, decoration: const InputDecoration(labelText: 'Prénoms')),
+              TextField(controller: _dateNaissCtrl, decoration: const InputDecoration(labelText: 'Date naissance (AAAA-MM-JJ)')),
+            ],
+          ),
           const SizedBox(height: 12),
           TextField(controller: _motifCtrl, decoration: const InputDecoration(labelText: 'Motif canonique obligatoire (ex. Préparation mariage)')),
           const SizedBox(height: 14),

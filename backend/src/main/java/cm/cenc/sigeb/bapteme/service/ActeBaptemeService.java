@@ -109,7 +109,7 @@ public class ActeBaptemeService {
             throw new BusinessException(HttpStatus.CONFLICT, "ACTE_SCELLE_IMMUABLE",
                     "Un acte scellé est immuable. Utilisez une demande d'avenant de rectification.");
         }
-        if (caller.role() != Role.CURE && caller.role() != Role.SECRETAIRE) {
+        if (caller.niveau() != NiveauEcclesial.PAROISSE || (caller.role() != Role.CURE && caller.role() != Role.SECRETAIRE)) {
             throw new BusinessException(HttpStatus.FORBIDDEN, "ACCES_REFUSE", "Action réservée à la paroisse");
         }
 

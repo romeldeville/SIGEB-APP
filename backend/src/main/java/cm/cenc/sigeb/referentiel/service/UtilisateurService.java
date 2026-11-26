@@ -103,6 +103,9 @@ public class UtilisateurService {
         Utilisateur u = utilisateurRepository.findById(utilisateurId)
                 .orElseThrow(() -> new BusinessException(HttpStatus.NOT_FOUND, "UTILISATEUR_INTROUVABLE", "Utilisateur introuvable"));
 
+        PerimetreResolu actuel = new PerimetreResolu(u.getProvince(), u.getDiocese(), u.getParoisse());
+        verifierDroitGestion(caller, u.getRole(), u.getNiveau(), actuel);
+
         verifierCoherenceRoleNiveau(req.nouveauRole(), req.nouveauNiveau());
         PerimetreResolu p = resoudrePerimetre(req.nouveauNiveau(), req.nouvelleProvinceId(), req.nouveauDioceseId(), req.nouvelleParoisseId());
         verifierDroitGestion(caller, req.nouveauRole(), req.nouveauNiveau(), p);

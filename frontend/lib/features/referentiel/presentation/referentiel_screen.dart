@@ -135,11 +135,15 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
   }
 
   Future<void> _dialogNouvelleParoisse() async {
-    if (_dioceses.isEmpty) {
+    final session = ref.read(authControllerProvider).session;
+    final diocesesAutorises = session?.isChancelier == true && session?.dioceseId != null
+        ? _dioceses.where((d) => d.id == session!.dioceseId).toList()
+        : _dioceses;
+    if (diocesesAutorises.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Créez d\'abord un diocèse.')));
       return;
     }
-    String dioId = _dioceses.first.id;
+    String dioId = diocesesAutorises.first.id;
     String type = 'PAROISSE';
     final code = TextEditingController();
     final nomFr = TextEditingController();
@@ -158,8 +162,8 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                 DropdownButtonFormField<String>(
                   initialValue: dioId,
                   decoration: const InputDecoration(labelText: 'Diocèse'),
-                  items: _dioceses.map((d) => DropdownMenuItem(value: d.id, child: Text('${d.nomFr} (${d.code})'))).toList(),
-                  onChanged: (v) => setS(() => dioId = v ?? dioId),
+                  items: diocesesAutorises.map((d) => DropdownMenuItem(value: d.id, child: Text('${d.nomFr} (${d.code})'))).toList(),
+                  onChanged: diocesesAutorises.length > 1 ? (v) => setS(() => dioId = v ?? dioId) : null,
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
@@ -207,12 +211,62 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
     }
   }
 
+  List<DropdownMenuItem<String>> _rolesAutorises(String? callerRole) {
+    return switch (callerRole) {
+      'ADMIN_NATIONAL' => const [
+          DropdownMenuItem(value: 'SECRETAIRE', child: Text('Secrétaire (tous niveaux)')),
+          DropdownMenuItem(value: 'CURE', child: Text('Curé / Recteur')),
+          DropdownMenuItem(value: 'CHANCELIER', child: Text('Chancelier diocésain')),
+          DropdownMenuItem(value: 'RESPONSABLE_PROVINCE', child: Text('Responsable Province')),
+          DropdownMenuItem(value: 'ADMIN_NATIONAL', child: Text('Admin National CENC')),
+        ],
+      'RESPONSABLE_PROVINCE' => const [
+          DropdownMenuItem(value: 'SECRETAIRE', child: Text('Secrétaire (Province / Diocèse / Paroisse)')),
+          DropdownMenuItem(value: 'CURE', child: Text('Curé / Recteur')),
+          DropdownMenuItem(value: 'CHANCELIER', child: Text('Chancelier diocésain')),
+        ],
+      'CHANCELIER' => const [
+          DropdownMenuItem(value: 'SECRETAIRE', child: Text('Secrétaire (Diocèse / Paroisse)')),
+          DropdownMenuItem(value: 'CURE', child: Text('Curé / Recteur')),
+        ],
+      _ => const [
+          DropdownMenuItem(value: 'SECRETAIRE', child: Text('Secrétaire paroissial')),
+        ],
+    };
+  }
+
+  List<DropdownMenuItem<String>> _niveauxAutorises(String? callerRole) {
+    return switch (callerRole) {
+      'ADMIN_NATIONAL' => const [
+          DropdownMenuItem(value: 'NATIONAL', child: Text('National (CENC)')),
+          DropdownMenuItem(value: 'PROVINCE', child: Text('Province Ecclésiastique')),
+          DropdownMenuItem(value: 'DIOCESE', child: Text('Diocèse / Chancellerie')),
+          DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse / Cathédrale')),
+        ],
+      'RESPONSABLE_PROVINCE' => const [
+          DropdownMenuItem(value: 'PROVINCE', child: Text('Province Ecclésiastique')),
+          DropdownMenuItem(value: 'DIOCESE', child: Text('Diocèse / Chancellerie')),
+          DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse / Cathédrale')),
+        ],
+      'CHANCELIER' => const [
+          DropdownMenuItem(value: 'DIOCESE', child: Text('Diocèse / Chancellerie')),
+          DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse / Cathédrale')),
+        ],
+      _ => const [
+          DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse / Cathédrale')),
+        ],
+    };
+  }
+
   Future<void> _dialogNouvelUtilisateur() async {
+    final session = ref.read(authControllerProvider).session;
+    final roleItems = _rolesAutorises(session?.role);
+    final niveauItems = _niveauxAutorises(session?.role);
     String role = 'SECRETAIRE';
     String niveau = 'PAROISSE';
-    String? provId = _provinces.firstOrNull?.id;
-    String? dioId = _dioceses.firstOrNull?.id;
-    String? parId = _paroisses.firstOrNull?.id;
+    String? provId = session?.provinceId ?? _provinces.firstOrNull?.id;
+    String? dioId = session?.dioceseId ?? _dioceses.firstOrNull?.id;
+    String? parId = session?.paroisseId ?? _paroisses.firstOrNull?.id;
     final identifiant = TextEditingController();
     final mdp = TextEditingController();
     final nom = TextEditingController();
@@ -235,32 +289,23 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                 DropdownButtonFormField<String>(
                   initialValue: role,
                   decoration: const InputDecoration(labelText: 'Rôle (Autorité)'),
-                  items: const [
-                    DropdownMenuItem(value: 'SECRETAIRE', child: Text('Secrétaire (tous niveaux)')),
-                    DropdownMenuItem(value: 'CURE', child: Text('Curé / Recteur')),
-                    DropdownMenuItem(value: 'CHANCELIER', child: Text('Chancelier diocésain')),
-                    DropdownMenuItem(value: 'RESPONSABLE_PROVINCE', child: Text('Responsable Province')),
-                    DropdownMenuItem(value: 'ADMIN_NATIONAL', child: Text('Admin National CENC')),
-                  ],
-                  onChanged: (v) => setS(() {
-                    role = v ?? role;
-                    if (role == 'ADMIN_NATIONAL') niveau = 'NATIONAL';
-                    if (role == 'RESPONSABLE_PROVINCE') niveau = 'PROVINCE';
-                    if (role == 'CHANCELIER') niveau = 'DIOCESE';
-                    if (role == 'CURE') niveau = 'PAROISSE';
-                  }),
+                  items: roleItems,
+                  onChanged: roleItems.length > 1
+                      ? (v) => setS(() {
+                            role = v ?? role;
+                            if (role == 'ADMIN_NATIONAL') niveau = 'NATIONAL';
+                            if (role == 'RESPONSABLE_PROVINCE') niveau = 'PROVINCE';
+                            if (role == 'CHANCELIER') niveau = 'DIOCESE';
+                            if (role == 'CURE') niveau = 'PAROISSE';
+                          })
+                      : null,
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   initialValue: niveau,
                   decoration: const InputDecoration(labelText: 'Niveau ecclésial'),
-                  items: const [
-                    DropdownMenuItem(value: 'NATIONAL', child: Text('National (CENC)')),
-                    DropdownMenuItem(value: 'PROVINCE', child: Text('Province Ecclésiastique')),
-                    DropdownMenuItem(value: 'DIOCESE', child: Text('Diocèse / Chancellerie')),
-                    DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse / Cathédrale')),
-                  ],
-                  onChanged: role == 'SECRETAIRE' ? (v) => setS(() => niveau = v ?? niveau) : null,
+                  items: niveauItems,
+                  onChanged: (role == 'SECRETAIRE' && niveauItems.length > 1) ? (v) => setS(() => niveau = v ?? niveau) : null,
                 ),
                 if (niveau == 'PROVINCE' && _provinces.isNotEmpty) ...[
                   const SizedBox(height: 10),
@@ -268,7 +313,7 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                     initialValue: provId,
                     decoration: const InputDecoration(labelText: 'Province'),
                     items: _provinces.map((p) => DropdownMenuItem(value: p.id, child: Text(p.nomFr))).toList(),
-                    onChanged: (v) => setS(() => provId = v),
+                    onChanged: session?.isAdminNational == true ? (v) => setS(() => provId = v) : null,
                   ),
                 ],
                 if (niveau == 'DIOCESE' && _dioceses.isNotEmpty) ...[
@@ -277,7 +322,9 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                     initialValue: dioId,
                     decoration: const InputDecoration(labelText: 'Diocèse'),
                     items: _dioceses.map((d) => DropdownMenuItem(value: d.id, child: Text(d.nomFr))).toList(),
-                    onChanged: (v) => setS(() => dioId = v),
+                    onChanged: (session?.isAdminNational == true || session?.isResponsableProvince == true)
+                        ? (v) => setS(() => dioId = v)
+                        : null,
                   ),
                 ],
                 if (niveau == 'PAROISSE' && _paroisses.isNotEmpty) ...[
@@ -286,7 +333,7 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                     initialValue: parId,
                     decoration: const InputDecoration(labelText: 'Paroisse / Cathédrale'),
                     items: _paroisses.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.nomFr} (${p.code})'))).toList(),
-                    onChanged: (v) => setS(() => parId = v),
+                    onChanged: session?.isCure == true ? null : (v) => setS(() => parId = v),
                   ),
                 ],
               ],
@@ -319,11 +366,14 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
   }
 
   Future<void> _dialogMuterUtilisateur(UtilisateurItem u) async {
-    String role = u.role;
-    String niveau = u.niveau;
-    String? provId = _provinces.isNotEmpty ? _provinces.first.id : null;
-    String? diocId = _dioceses.isNotEmpty ? _dioceses.first.id : null;
-    String? parId = _paroisses.isNotEmpty ? _paroisses.first.id : null;
+    final session = ref.read(authControllerProvider).session;
+    final roleItems = _rolesAutorises(session?.role);
+    final niveauItems = _niveauxAutorises(session?.role);
+    String role = roleItems.any((i) => i.value == u.role) ? u.role : roleItems.first.value!;
+    String niveau = niveauItems.any((i) => i.value == u.niveau) ? u.niveau : niveauItems.first.value!;
+    String? provId = session?.provinceId ?? _provinces.firstOrNull?.id;
+    String? dioId = session?.dioceseId ?? _dioceses.firstOrNull?.id;
+    String? parId = session?.paroisseId ?? _paroisses.firstOrNull?.id;
 
     final ok = await showDialog<bool>(
       context: context,
@@ -337,47 +387,40 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                 DropdownButtonFormField<String>(
                   initialValue: role,
                   decoration: const InputDecoration(labelText: 'Nouveau rôle'),
-                  items: const [
-                    DropdownMenuItem(value: 'ADMIN_NATIONAL', child: Text('Administrateur National')),
-                    DropdownMenuItem(value: 'RESPONSABLE_PROVINCE', child: Text('Responsable de Province')),
-                    DropdownMenuItem(value: 'CHANCELIER', child: Text('Chancelier')),
-                    DropdownMenuItem(value: 'CURE', child: Text('Curé')),
-                    DropdownMenuItem(value: 'SECRETAIRE', child: Text('Secrétaire')),
-                  ],
-                  onChanged: (v) => setS(() => role = v ?? role),
+                  items: roleItems,
+                  onChanged: (v) => setS(() {
+                    role = v ?? role;
+                    if (role == 'ADMIN_NATIONAL') niveau = 'NATIONAL';
+                    if (role == 'RESPONSABLE_PROVINCE') niveau = 'PROVINCE';
+                    if (role == 'CHANCELIER') niveau = 'DIOCESE';
+                    if (role == 'CURE') niveau = 'PAROISSE';
+                  }),
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   initialValue: niveau,
-                  decoration: const InputDecoration(labelText: 'Nouveau niveau ecclésial'),
-                  items: const [
-                    DropdownMenuItem(value: 'NATIONAL', child: Text('National')),
-                    DropdownMenuItem(value: 'PROVINCE', child: Text('Province')),
-                    DropdownMenuItem(value: 'DIOCESE', child: Text('Diocèse')),
-                    DropdownMenuItem(value: 'PAROISSE', child: Text('Paroisse')),
-                  ],
-                  onChanged: (v) => setS(() => niveau = v ?? niveau),
+                  decoration: const InputDecoration(labelText: 'Nouveau niveau'),
+                  items: niveauItems,
+                  onChanged: role == 'SECRETAIRE' ? (v) => setS(() => niveau = v ?? niveau) : null,
                 ),
                 if (niveau == 'PROVINCE' && _provinces.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     initialValue: provId,
                     decoration: const InputDecoration(labelText: 'Nouvelle province'),
-                    items: _provinces
-                        .map((p) => DropdownMenuItem(value: p.id, child: Text('${p.nomFr} (${p.code})')))
-                        .toList(),
-                    onChanged: (v) => setS(() => provId = v),
+                    items: _provinces.map((p) => DropdownMenuItem(value: p.id, child: Text(p.nomFr))).toList(),
+                    onChanged: session?.isAdminNational == true ? (v) => setS(() => provId = v) : null,
                   ),
                 ],
                 if (niveau == 'DIOCESE' && _dioceses.isNotEmpty) ...[
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
-                    initialValue: diocId,
+                    initialValue: dioId,
                     decoration: const InputDecoration(labelText: 'Nouveau diocèse'),
-                    items: _dioceses
-                        .map((d) => DropdownMenuItem(value: d.id, child: Text('${d.nomFr} (${d.code})')))
-                        .toList(),
-                    onChanged: (v) => setS(() => diocId = v),
+                    items: _dioceses.map((d) => DropdownMenuItem(value: d.id, child: Text(d.nomFr))).toList(),
+                    onChanged: (session?.isAdminNational == true || session?.isResponsableProvince == true)
+                        ? (v) => setS(() => dioId = v)
+                        : null,
                   ),
                 ],
                 if (niveau == 'PAROISSE' && _paroisses.isNotEmpty) ...[
@@ -385,9 +428,7 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                   DropdownButtonFormField<String>(
                     initialValue: parId,
                     decoration: const InputDecoration(labelText: 'Nouvelle paroisse'),
-                    items: _paroisses
-                        .map((p) => DropdownMenuItem(value: p.id, child: Text('${p.nomFr} (${p.code})')))
-                        .toList(),
+                    items: _paroisses.map((p) => DropdownMenuItem(value: p.id, child: Text('${p.nomFr} (${p.code})'))).toList(),
                     onChanged: (v) => setS(() => parId = v),
                   ),
                 ],
@@ -406,20 +447,16 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
       await ref.read(referentielRepositoryProvider).muterUtilisateur(u.id, {
         'nouveauRole': role,
         'nouveauNiveau': niveau,
-        if (niveau == 'PROVINCE' && provId != null) 'nouvelleProvinceId': provId,
-        if (niveau == 'DIOCESE' && diocId != null) 'nouveauDioceseId': diocId,
-        if (niveau == 'PAROISSE' && parId != null) 'nouvelleParoisseId': parId,
+        if (niveau == 'PROVINCE') 'nouvelleProvinceId': provId,
+        if (niveau == 'DIOCESE') 'nouveauDioceseId': dioId,
+        if (niveau == 'PAROISSE') 'nouvelleParoisseId': parId,
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Mutation enregistrée pour ${u.nomComplet} (sessions précédentes révoquées).')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Mutation effectuée pour ${u.nomComplet}.')));
       }
       await _load();
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
-      }
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(extractApiError(e))));
     }
   }
 
@@ -543,12 +580,16 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                                           label: Text(u.statut, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
                                           backgroundColor: (actif ? AppTheme.success : AppTheme.danger).withValues(alpha: 0.15),
                                         ),
-                                        if (session?.isAdminNational == true || session?.isChancelier == true) ...[
+                                        if (session?.canMutateUsers == true)
                                           IconButton(
-                                            tooltip: 'Muter vers une autre affectation',
+                                            tooltip: 'Muter ce compte',
                                             icon: const Icon(Icons.swap_horiz_rounded, color: AppTheme.navy),
                                             onPressed: () => _dialogMuterUtilisateur(u),
                                           ),
+                                        if (session?.isAdminNational == true ||
+                                            session?.isResponsableProvince == true ||
+                                            session?.isChancelier == true ||
+                                            (session?.isCure == true && u.role == 'SECRETAIRE'))
                                           IconButton(
                                             tooltip: actif ? 'Suspendre ce compte' : 'Réactiver ce compte',
                                             icon: Icon(
@@ -557,7 +598,6 @@ class _ReferentielScreenState extends ConsumerState<ReferentielScreen> with Sing
                                             ),
                                             onPressed: () => _toggleStatutUtilisateur(u),
                                           ),
-                                        ],
                                       ],
                                     ),
                                   ),

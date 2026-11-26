@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:printing/printing.dart';
 
 import '../../../app/l10n/app_strings.dart';
@@ -88,19 +89,14 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
     final motif = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Renvoyer l\'acte au secrétariat'),
+        title: const Text('Renvoyer au secrétariat pour correction'),
         content: TextField(
           controller: motifCtrl,
-          maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Motif de correction requis *'),
+          decoration: const InputDecoration(labelText: 'Motif de la correction attendue *'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.warning),
-            onPressed: () => Navigator.pop(ctx, motifCtrl.text.trim()),
-            child: const Text('Renvoyer'),
-          ),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, motifCtrl.text.trim()), child: const Text('Renvoyer')),
         ],
       ),
     );
@@ -108,9 +104,7 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
     try {
       await ref.read(baptemeRepositoryProvider).renvoyerPourCorrection(widget.acteId, motif);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Acte renvoyé au secrétariat pour correction.')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Acte renvoyé pour correction.')));
       }
       await _load();
     } catch (e) {
@@ -259,11 +253,13 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                     DropdownMenuItem(value: 'nom', child: Text('Nom de famille')),
                     DropdownMenuItem(value: 'prenoms', child: Text('Prénoms')),
                     DropdownMenuItem(value: 'nomBapteme', child: Text('Nom de baptême')),
+                    DropdownMenuItem(value: 'dateNaissance', child: Text('Date de naissance (AAAA-MM-JJ)')),
                     DropdownMenuItem(value: 'lieuNaissance', child: Text('Lieu de naissance')),
                     DropdownMenuItem(value: 'nomPere', child: Text('Nom du père')),
                     DropdownMenuItem(value: 'nomMere', child: Text('Nom de la mère')),
                     DropdownMenuItem(value: 'nomParrain', child: Text('Nom du parrain')),
                     DropdownMenuItem(value: 'nomMarraine', child: Text('Nom de la marraine')),
+                    DropdownMenuItem(value: 'lieuBapteme', child: Text('Lieu du baptême')),
                     DropdownMenuItem(value: 'ministreCelebrant', child: Text('Ministre célébrant')),
                   ],
                   onChanged: (v) => setS(() => champ = v ?? champ),
@@ -479,6 +475,20 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                             Text('Registre papier : Tome ${_acte!.registreTome} / Page ${_acte!.registrePage} / N° ${_acte!.registreNumero}'),
                             if (_acte!.nomParrain != null) Text('Parrain : ${_acte!.nomParrain}'),
                             if (_acte!.nomMarraine != null) Text('Marraine : ${_acte!.nomMarraine}'),
+                            if (_acte!.motifCorrection != null && _acte!.motifCorrection!.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.danger.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  'Motif de correction demandé : ${_acte!.motifCorrection}',
+                                  style: const TextStyle(color: AppTheme.danger, fontWeight: FontWeight.w600),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -488,6 +498,12 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                       spacing: 12,
                       runSpacing: 12,
                       children: [
+                        if (!_acte!.isScelle && session?.isParoisse == true)
+                          OutlinedButton.icon(
+                            onPressed: () => context.go('/baptemes/${_acte!.id}/modifier'),
+                            icon: const Icon(Icons.edit_outlined),
+                            label: const Text('Modifier l\'acte'),
+                          ),
                         if (!_acte!.isScelle && session?.isCure == true) ...[
                           ElevatedButton.icon(
                             onPressed: _scellerAvecPin,
@@ -496,7 +512,7 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                           ),
                           OutlinedButton.icon(
                             onPressed: _renvoyerPourCorrection,
-                            icon: const Icon(Icons.assignment_return_outlined),
+                            icon: const Icon(Icons.undo_rounded),
                             label: const Text('Renvoyer pour correction'),
                           ),
                         ],
@@ -531,7 +547,7 @@ class _BaptemeDetailScreenState extends ConsumerState<BaptemeDetailScreen> {
                                     icon: const Icon(Icons.print, color: AppTheme.navy),
                                     onPressed: () => _imprimerPdf(c),
                                   ),
-                                  if (c.isActive && session?.canSignActs == true)
+                                  if (c.isActive && session?.canRevokeCard == true)
                                     IconButton(
                                       tooltip: 'Révoquer cette carte',
                                       icon: const Icon(Icons.cancel_outlined, color: AppTheme.danger),

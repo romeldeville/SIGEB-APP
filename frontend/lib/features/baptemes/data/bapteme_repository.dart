@@ -27,6 +27,24 @@ class BaptemeRepository {
     return ActeBapteme.fromJson(resp.data as Map<String, dynamic>);
   }
 
+  Future<ActeBapteme> modifier(String id, Map<String, dynamic> payload) async {
+    final resp = await _dio.put('/actes/$id', data: payload);
+    return ActeBapteme.fromJson(resp.data as Map<String, dynamic>);
+  }
+
+  Future<List<Map<String, dynamic>>> verifierDoublons({
+    required String nom,
+    required String prenoms,
+    required String dateNaissance,
+  }) async {
+    final resp = await _dio.get('/actes/doublons', queryParameters: {
+      'nom': nom.trim(),
+      'prenoms': prenoms.trim(),
+      'dateNaissance': dateNaissance.trim(),
+    });
+    return (resp.data as List).cast<Map<String, dynamic>>();
+  }
+
   Future<ActeBapteme> sceller(String id, String pin) async {
     final resp = await _dio.post('/actes/$id/sceller', data: {'pinSignature': pin});
     return ActeBapteme.fromJson(resp.data as Map<String, dynamic>);

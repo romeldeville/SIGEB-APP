@@ -144,11 +144,18 @@ class _MentionsScreenState extends ConsumerState<MentionsScreen> {
     final motif = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Rejeter la mention marginale'),
-        content: TextField(
-          controller: motifCtrl,
-          maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Motif du rejet *'),
+        title: const Text('Rejeter cette mention marginale ?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Mention ${m.typeSacrement} sur ${m.iun} déclarée par ${m.paroisseDeclaranteNomFr}.'),
+            const SizedBox(height: 12),
+            TextField(
+              controller: motifCtrl,
+              decoration: const InputDecoration(labelText: 'Motif du rejet *'),
+            ),
+          ],
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annuler')),
@@ -164,7 +171,7 @@ class _MentionsScreenState extends ConsumerState<MentionsScreen> {
     try {
       await ref.read(mentionRepositoryProvider).rejeter(m.id, motif);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mention marginale rejetée.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Mention rejetée.')));
       }
       await _load();
     } catch (e) {
@@ -207,13 +214,13 @@ class _MentionsScreenState extends ConsumerState<MentionsScreen> {
                                 '${m.conjointNomComplet != null ? " · Conjoint : ${m.conjointNomComplet}" : ""}'),
                             trailing: isCure
                                 ? Wrap(
-                                    spacing: 8,
+                                    spacing: 6,
                                     children: [
                                       ElevatedButton(onPressed: () => _validerAvecPin(m), child: const Text('Inscrire')),
-                                      OutlinedButton(
-                                        style: OutlinedButton.styleFrom(foregroundColor: AppTheme.danger),
+                                      IconButton(
+                                        tooltip: 'Rejeter',
+                                        icon: const Icon(Icons.cancel_outlined, color: AppTheme.danger),
                                         onPressed: () => _rejeterMention(m),
-                                        child: const Text('Rejeter'),
                                       ),
                                     ],
                                   )
