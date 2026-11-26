@@ -65,11 +65,22 @@ class AuthController extends StateNotifier<AuthState> {
     await _storage.clear();
     state = const AuthState();
   }
+
+  void expireSession() {
+    if (state.session == null) return;
+    state = const AuthState(
+      error: 'Votre session a expiré. Veuillez vous reconnecter.',
+    );
+  }
 }
 
 final authControllerProvider = StateNotifierProvider<AuthController, AuthState>((ref) {
-  return AuthController(
+  final controller = AuthController(
     ref.watch(authRepositoryProvider),
     ref.watch(tokenStorageProvider),
   );
+  ref.listen<int>(sessionExpiredCounterProvider, (_, _) {
+    controller.expireSession();
+  });
+  return controller;
 });
